@@ -7,7 +7,7 @@ Build a set of n8n automation workflows that create a bidirectional data bridge 
 - **n8n instance:** Self-hosted at `tn.reinventingai.com`
 - **GHL Location ID:** `n3G3ccCrPjsSH9bGlfIQ`
 - **GHL Account:** TRX Tattoos & Piercing — standalone account, separate from TattooNOW
-- **Lightspeed base URL:** `https://trxtattoospiercing.retail.lightspeed.app`
+- **Lightspeed base URL:** `https://trxtattoospiercings.retail.lightspeed.app`
 
 ## Architecture Principle
 
@@ -21,7 +21,7 @@ Build a set of n8n automation workflows that create a bidirectional data bridge 
 
 ### Lightspeed X-Series
 - Auth method: Personal Token (for single retailer) or OAuth 2.0
-- Base URL: `https://trxtattoospiercing.retail.lightspeed.app`
+- Base URL: `https://trxtattoospiercings.retail.lightspeed.app`
 - API versions: v2.0 preferred, v0.9 for sale creation (still required)
 - Webhook secret: for HMAC-SHA256 signature verification
 
