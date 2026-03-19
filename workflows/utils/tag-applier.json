@@ -1,0 +1,119 @@
+{
+  "name": "Util — Tag Applier",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Sub-Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "contactId",
+              "value": "={{ $json.contactId }}"
+            }
+          ],
+          "object": [
+            {
+              "name": "tags",
+              "value": "={{ $json.tags }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-input",
+      "name": "Extract Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.contactId }}/tags",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"tags\": {{ JSON.stringify($json.tags) }} }",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "apply-tags",
+      "name": "Apply Tags to GHL Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ghl-pit-token",
+          "name": "GHL PIT Token"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "values": {
+          "boolean": [
+            {
+              "name": "success",
+              "value": "={{ !$json.error }}"
+            }
+          ],
+          "string": [
+            {
+              "name": "contactId",
+              "value": "={{ $('Extract Input').item.json.contactId }}"
+            },
+            {
+              "name": "appliedTags",
+              "value": "={{ JSON.stringify($('Extract Input').item.json.tags) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "build-result",
+      "name": "Build Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [660, 0]
+    }
+  ],
+  "connections": {
+    "Sub-Workflow Trigger": {
+      "main": [
+        [{ "node": "Extract Input", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Input": {
+      "main": [
+        [{ "node": "Apply Tags to GHL Contact", "type": "main", "index": 0 }]
+      ]
+    },
+    "Apply Tags to GHL Contact": {
+      "main": [
+        [{ "node": "Build Result", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

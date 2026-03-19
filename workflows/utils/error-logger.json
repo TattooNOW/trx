@@ -1,0 +1,101 @@
+{
+  "name": "Util — Error Logger",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Sub-Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "workflowName",
+              "value": "={{ $json.workflowName }}"
+            },
+            {
+              "name": "errorMessage",
+              "value": "={{ $json.errorMessage }}"
+            },
+            {
+              "name": "payload",
+              "value": "={{ JSON.stringify($json.payload || {}) }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "severity",
+              "value": "={{ $json.severity || 'error' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-error",
+      "name": "Format Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.OPS_EMAIL }}",
+        "toEmail": "={{ $env.OPS_EMAIL }}",
+        "subject": "=TRX n8n Error: {{ $json.workflowName }}",
+        "emailType": "text",
+        "message": "=Workflow: {{ $json.workflowName }}\nTime: {{ $json.timestamp }}\nSeverity: {{ $json.severity }}\n\nError: {{ $json.errorMessage }}\n\nPayload:\n{{ $json.payload }}"
+      },
+      "id": "send-email",
+      "name": "Send Error Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [440, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "values": {
+          "boolean": [
+            {
+              "name": "logged",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "confirm",
+      "name": "Confirm Logged",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [660, 0]
+    }
+  ],
+  "connections": {
+    "Sub-Workflow Trigger": {
+      "main": [
+        [{ "node": "Format Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Error": {
+      "main": [
+        [{ "node": "Send Error Email", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Error Email": {
+      "main": [
+        [{ "node": "Confirm Logged", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

@@ -1,0 +1,303 @@
+{
+  "name": "WF2 — LS Sale → GHL Contact Update + Tag",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ls-sale-complete",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "LS Sale Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "ls-sale-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verify HMAC-SHA256 signature from Lightspeed webhook\nconst crypto = require('crypto');\n\nconst signature = $input.first().json.headers['x-signature'];\nconst rawBody = $input.first().json.body;\nconst secret = $env.LS_CLIENT_SECRET;\n\nif (!signature || !secret) {\n  throw new Error('Missing webhook signature or client secret');\n}\n\nconst bodyString = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);\nconst expectedSig = crypto\n  .createHmac('sha256', secret)\n  .update(bodyString)\n  .digest('hex');\n\nif (signature !== expectedSig) {\n  throw new Error('Invalid HMAC-SHA256 signature — webhook rejected');\n}\n\nconst payload = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;\nreturn [{ json: { verified: true, payload } }];"
+      },
+      "id": "verify-signature",
+      "name": "Verify HMAC Signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-closed",
+              "leftValue": "={{ $json.payload.status }}",
+              "rightValue": "CLOSED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-closed",
+      "name": "Is Sale CLOSED?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract sale data and determine tags from line item categories\nconst sale = $json.payload;\n\nconst customerEmail = sale.customer_email || (sale.customer && sale.customer.email) || '';\nconst customerFirstName = sale.customer_first_name || (sale.customer && sale.customer.first_name) || '';\nconst customerLastName = sale.customer_last_name || (sale.customer && sale.customer.last_name) || '';\nconst customerPhone = sale.customer_phone || (sale.customer && sale.customer.phone) || '';\nconst saleId = sale.id || sale.sale_id;\nconst saleTotal = parseFloat(sale.total_inc_tax || sale.total || 0);\nconst employeeId = sale.user_id || sale.employee_id || '';\nconst registerId = sale.register_id || '';\nconst saleDate = sale.sale_date || sale.completed_at || new Date().toISOString().split('T')[0];\n\n// Category → tag mapping\nconst categoryTagMap = {\n  'tattoo services': 'got-tattoo',\n  'tattoo': 'got-tattoo',\n  'piercing services': 'got-piercing',\n  'piercing': 'got-piercing',\n  'jewelry': 'jewelry-buyer',\n  'aftercare': 'aftercare-buyer',\n  'aftercare products': 'aftercare-buyer'\n};\n\nconst tags = new Set(['lightspeed-customer']);\nconst lineItems = sale.line_items || sale.register_sale_products || [];\n\nfor (const item of lineItems) {\n  const categoryName = (item.product_type_name || item.category_name || item.type || '').toLowerCase().trim();\n  for (const [key, tag] of Object.entries(categoryTagMap)) {\n    if (categoryName.includes(key)) {\n      tags.add(tag);\n    }\n  }\n}\n\nif (!customerEmail) {\n  throw new Error(`Sale ${saleId} has no customer email — cannot sync to GHL`);\n}\n\nreturn [{\n  json: {\n    customerEmail,\n    customerFirstName,\n    customerLastName,\n    customerPhone,\n    saleId: String(saleId),\n    saleTotal,\n    saleDate,\n    employeeId: String(employeeId),\n    registerId: String(registerId),\n    tags: Array.from(tags),\n    hasTattoo: tags.has('got-tattoo'),\n    hasPiercing: tags.has('got-piercing')\n  }\n}];"
+      },
+      "id": "extract-sale-data",
+      "name": "Extract Sale Data + Tags",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, -60]
+    },
+    {
+      "parameters": {},
+      "id": "skip-non-closed",
+      "name": "Skip Non-Closed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [660, 120]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ /* Set to Customer Matcher workflow ID after import */ '' }}",
+        "options": {},
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "email",
+              "value": "={{ $json.customerEmail }}"
+            },
+            {
+              "name": "firstName",
+              "value": "={{ $json.customerFirstName }}"
+            },
+            {
+              "name": "lastName",
+              "value": "={{ $json.customerLastName }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json.customerPhone }}"
+            }
+          ]
+        }
+      },
+      "id": "customer-matcher",
+      "name": "Find/Create Customer",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [880, -60]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.ghl_contact_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-ghl-contact",
+      "name": "Get GHL Contact (for lifetime_value)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, -60],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ghl-pit-token",
+          "name": "GHL PIT Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate updated lifetime value and prepare custom field update\nconst contact = $json.contact || {};\nconst saleData = $('Extract Sale Data + Tags').first().json;\nconst matcherData = $('Find/Create Customer').first().json;\n\n// Get existing lifetime value from custom fields\nlet existingLifetime = 0;\nconst customFields = contact.customFields || contact.customField || [];\nif (Array.isArray(customFields)) {\n  const lvField = customFields.find(f => f.key === 'lifetime_value' || f.id === 'lifetime_value');\n  if (lvField) {\n    existingLifetime = parseFloat(lvField.value || lvField.field_value || 0);\n  }\n}\n\nconst newLifetime = existingLifetime + saleData.saleTotal;\nconst tags = [...saleData.tags];\nif (newLifetime >= 500) tags.push('vip');\n\nreturn [{\n  json: {\n    ghl_contact_id: matcherData.ghl_contact_id,\n    saleTotal: saleData.saleTotal,\n    saleDate: saleData.saleDate,\n    saleId: saleData.saleId,\n    employeeId: saleData.employeeId,\n    newLifetime,\n    tags,\n    hasTattoo: saleData.hasTattoo,\n    hasPiercing: saleData.hasPiercing\n  }\n}];"
+      },
+      "id": "calc-lifetime",
+      "name": "Calculate Lifetime Value",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, -60]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.ghl_contact_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"customFields\": [\n    { \"key\": \"last_lightspeed_sale_date\", \"field_value\": \"{{ $json.saleDate }}\" },\n    { \"key\": \"last_lightspeed_sale_amount\", \"field_value\": \"{{ $json.saleTotal }}\" },\n    { \"key\": \"lifetime_value\", \"field_value\": \"{{ $json.newLifetime }}\" },\n    { \"key\": \"last_artist_id\", \"field_value\": \"{{ $json.employeeId }}\" }\n  ]\n}",
+        "options": {}
+      },
+      "id": "update-ghl-contact",
+      "name": "Update GHL Custom Fields",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, -120],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ghl-pit-token",
+          "name": "GHL PIT Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ /* Set to Tag Applier workflow ID after import */ '' }}",
+        "options": {},
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "contactId",
+              "value": "={{ $json.ghl_contact_id }}"
+            },
+            {
+              "name": "tags",
+              "value": "={{ $json.tags }}"
+            }
+          ]
+        }
+      },
+      "id": "apply-tags",
+      "name": "Apply Tags",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-tattoo",
+              "leftValue": "={{ $('Calculate Lifetime Value').first().json.hasTattoo || $('Calculate Lifetime Value').first().json.hasPiercing }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "needs-aftercare",
+      "name": "Needs Aftercare Sequence?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $('Calculate Lifetime Value').first().json.ghl_contact_id }}/workflow/{{ $('Calculate Lifetime Value').first().json.hasTattoo ? 'TATTOO_AFTERCARE_WORKFLOW_ID' : 'PIERCING_AFTERCARE_WORKFLOW_ID' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"eventStartTime\": \"{{ $('Calculate Lifetime Value').first().json.saleDate }}\"\n}",
+        "options": {}
+      },
+      "id": "trigger-aftercare",
+      "name": "Trigger Aftercare Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, -60],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ghl-pit-token",
+          "name": "GHL PIT Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {},
+      "id": "no-aftercare",
+      "name": "No Aftercare Needed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1980, 120]
+    }
+  ],
+  "connections": {
+    "LS Sale Webhook": {
+      "main": [
+        [{ "node": "Verify HMAC Signature", "type": "main", "index": 0 }]
+      ]
+    },
+    "Verify HMAC Signature": {
+      "main": [
+        [{ "node": "Is Sale CLOSED?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Is Sale CLOSED?": {
+      "main": [
+        [{ "node": "Extract Sale Data + Tags", "type": "main", "index": 0 }],
+        [{ "node": "Skip Non-Closed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Sale Data + Tags": {
+      "main": [
+        [{ "node": "Find/Create Customer", "type": "main", "index": 0 }]
+      ]
+    },
+    "Find/Create Customer": {
+      "main": [
+        [{ "node": "Get GHL Contact (for lifetime_value)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get GHL Contact (for lifetime_value)": {
+      "main": [
+        [{ "node": "Calculate Lifetime Value", "type": "main", "index": 0 }]
+      ]
+    },
+    "Calculate Lifetime Value": {
+      "main": [
+        [
+          { "node": "Update GHL Custom Fields", "type": "main", "index": 0 },
+          { "node": "Apply Tags", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Apply Tags": {
+      "main": [
+        [{ "node": "Needs Aftercare Sequence?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Needs Aftercare Sequence?": {
+      "main": [
+        [{ "node": "Trigger Aftercare Workflow", "type": "main", "index": 0 }],
+        [{ "node": "No Aftercare Needed", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

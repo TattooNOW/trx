@@ -1,0 +1,326 @@
+{
+  "name": "Util — Customer Matcher",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Sub-Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "firstName",
+              "value": "={{ $json.firstName || '' }}"
+            },
+            {
+              "name": "lastName",
+              "value": "={{ $json.lastName || '' }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json.phone || '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-input",
+      "name": "Extract Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.LS_BASE_URL }}/api/2.0/customers",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
+      },
+      "id": "ls-search",
+      "name": "Search Lightspeed Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, -120],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lightspeed-token",
+          "name": "Lightspeed Personal Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "locationId",
+              "value": "={{ $env.GHL_LOCATION_ID }}"
+            },
+            {
+              "name": "query",
+              "value": "={{ $('Extract Input').item.json.email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ghl-search",
+      "name": "Search GHL Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 120],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ghl-pit-token",
+          "name": "GHL PIT Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ls-found",
+              "leftValue": "={{ $('Search Lightspeed Customer').json.data?.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ls-exists",
+      "name": "LS Customer Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [700, -120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LS_BASE_URL }}/api/2.0/customers",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "first_name",
+              "value": "={{ $('Extract Input').item.json.firstName }}"
+            },
+            {
+              "name": "last_name",
+              "value": "={{ $('Extract Input').item.json.lastName }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $('Extract Input').item.json.email }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $('Extract Input').item.json.phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ls-create",
+      "name": "Create LS Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, -60],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lightspeed-token",
+          "name": "Lightspeed Personal Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ghl-found",
+              "leftValue": "={{ $('Search GHL Contact').json.contacts?.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ghl-exists",
+      "name": "GHL Contact Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [700, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "locationId",
+              "value": "={{ $env.GHL_LOCATION_ID }}"
+            },
+            {
+              "name": "firstName",
+              "value": "={{ $('Extract Input').item.json.firstName }}"
+            },
+            {
+              "name": "lastName",
+              "value": "={{ $('Extract Input').item.json.lastName }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $('Extract Input').item.json.email }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $('Extract Input').item.json.phone }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
+      },
+      "id": "ghl-create",
+      "name": "Create GHL Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 180],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ghl-pit-token",
+          "name": "GHL PIT Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gather results from all branches\nconst input = $('Extract Input').first().json;\n\n// Lightspeed result\nlet lightspeed_customer_id = null;\nlet found_in_ls = false;\n\ntry {\n  const lsSearch = $('Search Lightspeed Customer').first().json;\n  if (lsSearch.data && lsSearch.data.length > 0) {\n    lightspeed_customer_id = lsSearch.data[0].id;\n    found_in_ls = true;\n  }\n} catch (e) {}\n\nif (!found_in_ls) {\n  try {\n    const lsCreate = $('Create LS Customer').first().json;\n    if (lsCreate.id) {\n      lightspeed_customer_id = lsCreate.id;\n    }\n  } catch (e) {}\n}\n\n// GHL result\nlet ghl_contact_id = null;\nlet found_in_ghl = false;\n\ntry {\n  const ghlSearch = $('Search GHL Contact').first().json;\n  if (ghlSearch.contacts && ghlSearch.contacts.length > 0) {\n    ghl_contact_id = ghlSearch.contacts[0].id;\n    found_in_ghl = true;\n  }\n} catch (e) {}\n\nif (!found_in_ghl) {\n  try {\n    const ghlCreate = $('Create GHL Contact').first().json;\n    if (ghlCreate.contact && ghlCreate.contact.id) {\n      ghl_contact_id = ghlCreate.contact.id;\n    }\n  } catch (e) {}\n}\n\nreturn [{\n  json: {\n    ghl_contact_id,\n    lightspeed_customer_id,\n    found_in_ghl,\n    found_in_ls,\n    email: input.email\n  }\n}];"
+      },
+      "id": "build-result",
+      "name": "Build Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1220, 0]
+    }
+  ],
+  "connections": {
+    "Sub-Workflow Trigger": {
+      "main": [
+        [{ "node": "Extract Input", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Input": {
+      "main": [
+        [
+          { "node": "Search Lightspeed Customer", "type": "main", "index": 0 },
+          { "node": "Search GHL Contact", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Search Lightspeed Customer": {
+      "main": [
+        [{ "node": "LS Customer Exists?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Search GHL Contact": {
+      "main": [
+        [{ "node": "GHL Contact Exists?", "type": "main", "index": 0 }]
+      ]
+    },
+    "LS Customer Exists?": {
+      "main": [
+        [{ "node": "Build Result", "type": "main", "index": 0 }],
+        [{ "node": "Create LS Customer", "type": "main", "index": 0 }]
+      ]
+    },
+    "GHL Contact Exists?": {
+      "main": [
+        [{ "node": "Build Result", "type": "main", "index": 0 }],
+        [{ "node": "Create GHL Contact", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create LS Customer": {
+      "main": [
+        [{ "node": "Build Result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create GHL Contact": {
+      "main": [
+        [{ "node": "Build Result", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

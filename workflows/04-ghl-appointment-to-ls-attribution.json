@@ -1,0 +1,288 @@
+{
+  "name": "WF4 — GHL Appointment → LS Sale Attribution",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ghl-appointment-complete",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "GHL Appointment Completed Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "ghl-appt-complete-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract appointment data and validate status\nconst body = $json.body || $json;\nconst status = (body.status || body.appointmentStatus || '').toLowerCase();\n\nif (status !== 'showed' && status !== 'completed') {\n  return []; // Skip — not a completion event\n}\n\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst artistName = body.calendarName || body.assigned_user_name || body.artist_name || '';\nconst appointmentId = body.id || body.appointment_id;\nconst appointmentDate = body.startTime || body.appointment_date || new Date().toISOString().split('T')[0];\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in appointment webhook');\n}\n\nreturn [{\n  json: {\n    contactEmail,\n    artistName,\n    appointmentId,\n    appointmentDate: appointmentDate.split('T')[0],\n    status\n  }\n}];"
+      },
+      "id": "validate-extract",
+      "name": "Validate & Extract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.LS_BASE_URL }}/api/2.0/sales",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "customer_email",
+              "value": "={{ $json.contactEmail }}"
+            },
+            {
+              "name": "date_from",
+              "value": "={{ $json.appointmentDate }}"
+            },
+            {
+              "name": "date_to",
+              "value": "={{ $json.appointmentDate }}"
+            },
+            {
+              "name": "status",
+              "value": "CLOSED"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "find-ls-sale",
+      "name": "Find LS Sale by Email + Date",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lightspeed-token",
+          "name": "Lightspeed Personal Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "sale-found",
+              "leftValue": "={{ $json.data?.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sale-found",
+      "name": "Sale Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Map GHL artist name to Lightspeed employee ID\n// IMPORTANT: Update this mapping with actual Lightspeed employee IDs from client\nconst artistMap = {\n  // 'Artist Name in GHL Calendar': 'lightspeed_employee_uuid'\n  // Example entries — replace with real values:\n  // 'Jake': 'employee-uuid-1',\n  // 'Honeybee': 'employee-uuid-2',\n};\n\nconst sale = $json.data[0];\nconst artistName = $('Validate & Extract').first().json.artistName;\nconst mappedEmployeeId = artistMap[artistName] || null;\n\nconst currentEmployeeId = sale.user_id || null;\nconst needsUpdate = mappedEmployeeId && mappedEmployeeId !== currentEmployeeId;\n\nreturn [{\n  json: {\n    saleId: sale.id,\n    currentEmployeeId,\n    mappedEmployeeId,\n    artistName,\n    needsUpdate,\n    contactEmail: $('Validate & Extract').first().json.contactEmail\n  }\n}];"
+      },
+      "id": "map-artist",
+      "name": "Map Artist → Employee ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, -60]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "needs-update",
+              "leftValue": "={{ $json.needsUpdate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "needs-update",
+      "name": "Needs Attribution Update?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1100, -60]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.LS_BASE_URL }}/api/2.0/sales/{{ $json.saleId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.mappedEmployeeId }}\"\n}",
+        "options": {}
+      },
+      "id": "patch-sale",
+      "name": "Update Sale Employee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, -120],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lightspeed-token",
+          "name": "Lightspeed Personal Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {},
+      "id": "already-correct",
+      "name": "Already Correct",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ /* Set to Customer Matcher workflow ID after import */ '' }}",
+        "options": {},
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "email",
+              "value": "={{ $('Map Artist → Employee ID').first().json.contactEmail }}"
+            },
+            {
+              "name": "firstName",
+              "value": ""
+            },
+            {
+              "name": "lastName",
+              "value": ""
+            },
+            {
+              "name": "phone",
+              "value": ""
+            }
+          ]
+        }
+      },
+      "id": "get-ghl-contact",
+      "name": "Get GHL Contact",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1540, -60]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.ghl_contact_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"customFields\": [\n    { \"key\": \"last_artist_id\", \"field_value\": \"{{ $('Map Artist → Employee ID').first().json.mappedEmployeeId || $('Map Artist → Employee ID').first().json.artistName }}\" }\n  ]\n}",
+        "options": {}
+      },
+      "id": "update-ghl-artist",
+      "name": "Update GHL last_artist_id",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, -60],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ghl-pit-token",
+          "name": "GHL PIT Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {},
+      "id": "no-sale",
+      "name": "No Sale Found (skip)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [880, 120]
+    }
+  ],
+  "connections": {
+    "GHL Appointment Completed Webhook": {
+      "main": [
+        [{ "node": "Validate & Extract", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate & Extract": {
+      "main": [
+        [{ "node": "Find LS Sale by Email + Date", "type": "main", "index": 0 }]
+      ]
+    },
+    "Find LS Sale by Email + Date": {
+      "main": [
+        [{ "node": "Sale Found?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Sale Found?": {
+      "main": [
+        [{ "node": "Map Artist → Employee ID", "type": "main", "index": 0 }],
+        [{ "node": "No Sale Found (skip)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Map Artist → Employee ID": {
+      "main": [
+        [{ "node": "Needs Attribution Update?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Needs Attribution Update?": {
+      "main": [
+        [{ "node": "Update Sale Employee", "type": "main", "index": 0 }],
+        [{ "node": "Already Correct", "type": "main", "index": 0 }]
+      ]
+    },
+    "Update Sale Employee": {
+      "main": [
+        [{ "node": "Get GHL Contact", "type": "main", "index": 0 }]
+      ]
+    },
+    "Already Correct": {
+      "main": [
+        [{ "node": "Get GHL Contact", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get GHL Contact": {
+      "main": [
+        [{ "node": "Update GHL last_artist_id", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

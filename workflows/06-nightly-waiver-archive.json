@@ -1,0 +1,288 @@
+{
+  "name": "WF6 — Nightly Waiver Archive",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every Night at Midnight",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build today's date and folder path\nconst now = new Date();\nconst year = now.getFullYear();\nconst month = String(now.getMonth() + 1).padStart(2, '0');\nconst day = String(now.getDate()).padStart(2, '0');\nconst today = `${year}-${month}-${day}`;\n\n// For fetching submissions from the past day\nconst yesterday = new Date(now);\nyesterday.setDate(yesterday.getDate() - 1);\n\nreturn [{\n  json: {\n    today,\n    year: String(year),\n    month,\n    folderPath: `TRX-Waivers/${year}/${month}`,\n    startDate: yesterday.toISOString(),\n    endDate: now.toISOString()\n  }\n}];"
+      },
+      "id": "build-date",
+      "name": "Build Date & Folder Path",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://services.leadconnectorhq.com/forms/submissions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "locationId",
+              "value": "={{ $env.GHL_LOCATION_ID }}"
+            },
+            {
+              "name": "startAt",
+              "value": "={{ $json.startDate }}"
+            },
+            {
+              "name": "endAt",
+              "value": "={{ $json.endDate }}"
+            },
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-submissions",
+      "name": "Fetch Today's Form Submissions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ghl-pit-token",
+          "name": "GHL PIT Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter for consent/waiver forms and prepare for PDF generation\nconst submissions = $json.submissions || [];\nconst dateInfo = $('Build Date & Folder Path').first().json;\n\n// Filter for tattoo and piercing consent forms\n// IMPORTANT: Replace these form IDs with actual GHL form IDs\nconst consentFormIds = [\n  'TATTOO_CONSENT_FORM_ID',   // Replace with actual tattoo consent form ID\n  'PIERCING_CONSENT_FORM_ID'  // Replace with actual piercing consent form ID\n];\n\nconst waiverSubmissions = submissions.filter(sub => {\n  // If form IDs are configured, filter by them\n  // Otherwise, include all (user needs to set IDs)\n  if (consentFormIds[0] !== 'TATTOO_CONSENT_FORM_ID') {\n    return consentFormIds.includes(sub.formId);\n  }\n  return true; // Include all until form IDs are configured\n});\n\nif (waiverSubmissions.length === 0) {\n  return [{ json: { noSubmissions: true, count: 0, folderPath: dateInfo.folderPath } }];\n}\n\nreturn waiverSubmissions.map(sub => {\n  const lastName = sub.others?.lastName || sub.others?.last_name || sub.contactId || 'unknown';\n  const formType = sub.formId === consentFormIds[0] ? 'tattoo-consent' : 'piercing-consent';\n  const fileName = `${dateInfo.today}_${lastName}_${formType}.pdf`;\n\n  return {\n    json: {\n      submissionId: sub.id,\n      formId: sub.formId,\n      contactId: sub.contactId,\n      lastName,\n      formType,\n      fileName,\n      folderPath: dateInfo.folderPath,\n      submissionData: sub,\n      noSubmissions: false\n    }\n  };\n});"
+      },
+      "id": "filter-consent-forms",
+      "name": "Filter Consent Forms",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-submissions",
+              "leftValue": "={{ $json.noSubmissions }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-submissions",
+      "name": "Has Submissions?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate HTML from submission data for PDF conversion\nconst sub = $json.submissionData;\nconst others = sub.others || {};\n\nlet html = `\n<!DOCTYPE html>\n<html>\n<head><style>\n  body { font-family: Arial, sans-serif; margin: 40px; }\n  h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }\n  .field { margin: 10px 0; }\n  .label { font-weight: bold; color: #555; }\n  .value { margin-left: 10px; }\n  .footer { margin-top: 40px; font-size: 12px; color: #888; }\n</style></head>\n<body>\n  <h1>TRX Tattoos & Piercing — Consent Form</h1>\n  <p><strong>Form Type:</strong> ${$json.formType}</p>\n  <p><strong>Date:</strong> ${sub.createdAt || new Date().toISOString()}</p>\n  <hr>\n`;\n\nfor (const [key, value] of Object.entries(others)) {\n  html += `<div class=\"field\"><span class=\"label\">${key}:</span> <span class=\"value\">${value}</span></div>\\n`;\n}\n\nhtml += `\n  <div class=\"footer\">\n    <p>Archived by TRX automated system. Submission ID: ${sub.id}</p>\n    <p>Missouri 2-year retention requirement — do not delete before retention period expires.</p>\n  </div>\n</body>\n</html>`;\n\nreturn [{ json: { ...$json, html, binary: null } }];"
+      },
+      "id": "generate-html",
+      "name": "Generate HTML for PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, -60]
+    },
+    {
+      "parameters": {
+        "operation": "toFile",
+        "options": {},
+        "sourceProperty": "html",
+        "fileName": "={{ $json.fileName }}",
+        "mimeType": "text/html"
+      },
+      "id": "convert-to-file",
+      "name": "Convert to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [1320, -60]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "name": "={{ $('Generate HTML for PDF').first().json.fileName }}",
+        "folderId": "={{ $env.GOOGLE_DRIVE_FOLDER_ID }}",
+        "options": {
+          "createFolder": true
+        }
+      },
+      "id": "upload-to-drive",
+      "name": "Upload to Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1540, -60],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "google-drive-creds",
+          "name": "Google Drive"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "upload-failed",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "upload-ok",
+      "name": "Upload OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1760, -60]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ /* Set to Error Logger workflow ID after import */ '' }}",
+        "options": {},
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "workflowName",
+              "value": "WF6 — Nightly Waiver Archive"
+            },
+            {
+              "name": "errorMessage",
+              "value": "=Failed to upload waiver: {{ $('Generate HTML for PDF').first().json.fileName }}"
+            },
+            {
+              "name": "payload",
+              "value": "={{ $('Generate HTML for PDF').first().json }}"
+            },
+            {
+              "name": "severity",
+              "value": "critical"
+            }
+          ]
+        }
+      },
+      "id": "log-upload-error",
+      "name": "Log Upload Error",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1980, -120]
+    },
+    {
+      "parameters": {},
+      "id": "upload-success",
+      "name": "Upload Success",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1980, 0]
+    },
+    {
+      "parameters": {},
+      "id": "no-waivers",
+      "name": "No Waivers Today",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1100, 120]
+    }
+  ],
+  "connections": {
+    "Every Night at Midnight": {
+      "main": [
+        [{ "node": "Build Date & Folder Path", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Date & Folder Path": {
+      "main": [
+        [{ "node": "Fetch Today's Form Submissions", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Today's Form Submissions": {
+      "main": [
+        [{ "node": "Filter Consent Forms", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter Consent Forms": {
+      "main": [
+        [{ "node": "Has Submissions?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Submissions?": {
+      "main": [
+        [{ "node": "Generate HTML for PDF", "type": "main", "index": 0 }],
+        [{ "node": "No Waivers Today", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generate HTML for PDF": {
+      "main": [
+        [{ "node": "Convert to File", "type": "main", "index": 0 }]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [{ "node": "Upload to Google Drive", "type": "main", "index": 0 }]
+      ]
+    },
+    "Upload to Google Drive": {
+      "main": [
+        [{ "node": "Upload OK?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Upload OK?": {
+      "main": [
+        [{ "node": "Log Upload Error", "type": "main", "index": 0 }],
+        [{ "node": "Upload Success", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
