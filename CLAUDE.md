@@ -48,14 +48,40 @@ Build a set of n8n automation workflows that create a bidirectional data bridge 
 
 ### Lightspeed Sale → GHL Tags
 
-| Lightspeed Product Category | GHL Tag |
-|----------------------------|---------|
-| Tattoo Services | `got-tattoo` |
-| Piercing Services | `got-piercing` |
-| Jewelry (any) | `jewelry-buyer` |
-| Aftercare Products | `aftercare-buyer` |
+| Lightspeed Product Category (actual names) | GHL Tag |
+|--------------------------------------------|---------|
+| `Tattoo Artist` | `[client] tattoo` |
+| `Microblader` | `[client] tattoo` |
+| `Piercing` | `[client] piercing` |
+| `Piercer` | `[client] piercing` |
+| `Tooth Gem` | `[client] piercing` |
 
-> **Important:** Confirm exact Lightspeed category names with client before hardcoding. Pull via `GET /api/2.0/product_types` to see actual values.
+### Cancel/No-Show Tags (derived from GHL calendar name)
+
+| Scenario | Tag |
+|----------|-----|
+| Tattoo no-show | `[client] tattoo: no-show` |
+| Tattoo late cancel (<48hrs) | `[client] tattoo: late-cancel` |
+| Piercing no-show | `[client] piercing: no-show` |
+| Piercing late cancel (<48hrs) | `[client] piercing: late-cancel` |
+
+### System Tags (set automatically by workflows)
+
+| Tag | Set By | Meaning |
+|-----|--------|---------|
+| `[system] lightspeed-customer` | WF2, WF5 | Customer has purchased in Lightspeed |
+| `[system] vip` | WF2 | Lifetime value ≥ $500 |
+
+### n8n Credential IDs
+
+| Credential | n8n ID | Used By |
+|-----------|--------|---------|
+| Lightspeed TRX | `rwkPiSgkd7mzdn83` | All LS API calls |
+| GHL TRX | `AcpfpX2vSAGlSAfK` | All GHL API calls |
+
+### n8n Tag
+
+All TRX workflows are tagged `TRX` (ID: `k2B6iG1Tdu1xzdHk`) for organization.
 
 ### GHL Custom Fields Needed on Contact
 

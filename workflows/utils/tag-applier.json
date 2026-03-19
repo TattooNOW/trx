@@ -1,5 +1,5 @@
 {
-  "name": "Util — Tag Applier",
+  "name": "Util \u2014 Tag Applier",
   "nodes": [
     {
       "parameters": {},
@@ -7,7 +7,10 @@
       "name": "Sub-Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -31,7 +34,10 @@
       "name": "Extract Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -49,17 +55,29 @@
             }
           },
           "timeout": 10000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
         }
       },
       "id": "apply-tags",
       "name": "Apply Tags to GHL Contact",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, 0],
+      "position": [
+        440,
+        0
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "ghl-pit-token",
-          "name": "GHL PIT Token"
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
         }
       },
       "retryOnFail": true,
@@ -92,28 +110,55 @@
       "name": "Build Result",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [660, 0]
+      "position": [
+        660,
+        0
+      ]
     }
   ],
   "connections": {
     "Sub-Workflow Trigger": {
       "main": [
-        [{ "node": "Extract Input", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Extract Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Extract Input": {
       "main": [
-        [{ "node": "Apply Tags to GHL Contact", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Apply Tags to GHL Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Apply Tags to GHL Contact": {
       "main": [
-        [{ "node": "Build Result", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Build Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
   "settings": {
     "executionOrder": "v1"
   },
-  "active": false
+  "active": false,
+  "tags": [
+    {
+      "id": "k2B6iG1Tdu1xzdHk",
+      "name": "TRX"
+    }
+  ]
 }

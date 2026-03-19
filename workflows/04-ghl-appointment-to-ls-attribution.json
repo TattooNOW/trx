@@ -1,5 +1,5 @@
 {
-  "name": "WF4 — GHL Appointment → LS Sale Attribution",
+  "name": "WF4 \u2014 GHL Appointment \u2192 LS Sale Attribution",
   "nodes": [
     {
       "parameters": {
@@ -13,18 +13,24 @@
       "name": "GHL Appointment Completed Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "ghl-appt-complete-webhook"
     },
     {
       "parameters": {
-        "jsCode": "// Extract appointment data and validate status\nconst body = $json.body || $json;\nconst status = (body.status || body.appointmentStatus || '').toLowerCase();\n\nif (status !== 'showed' && status !== 'completed') {\n  return []; // Skip — not a completion event\n}\n\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst artistName = body.calendarName || body.assigned_user_name || body.artist_name || '';\nconst appointmentId = body.id || body.appointment_id;\nconst appointmentDate = body.startTime || body.appointment_date || new Date().toISOString().split('T')[0];\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in appointment webhook');\n}\n\nreturn [{\n  json: {\n    contactEmail,\n    artistName,\n    appointmentId,\n    appointmentDate: appointmentDate.split('T')[0],\n    status\n  }\n}];"
+        "jsCode": "// Extract appointment data and validate status\nconst body = $json.body || $json;\nconst status = (body.status || body.appointmentStatus || '').toLowerCase();\n\nif (status !== 'showed' && status !== 'completed') {\n  return []; // Skip \u2014 not a completion event\n}\n\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst artistName = body.calendarName || body.assigned_user_name || body.artist_name || '';\nconst appointmentId = body.id || body.appointment_id;\nconst appointmentDate = body.startTime || body.appointment_date || new Date().toISOString().split('T')[0];\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in appointment webhook');\n}\n\nreturn [{\n  json: {\n    contactEmail,\n    artistName,\n    appointmentId,\n    appointmentDate: appointmentDate.split('T')[0],\n    status\n  }\n}];"
       },
       "id": "validate-extract",
       "name": "Validate & Extract",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -59,14 +65,20 @@
       "name": "Find LS Sale by Email + Date",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, 0],
+      "position": [
+        440,
+        0
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "lightspeed-token",
-          "name": "Lightspeed Personal Token"
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
@@ -95,17 +107,23 @@
       "name": "Sale Found?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [660, 0]
+      "position": [
+        660,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Map GHL artist name to Lightspeed employee ID\n// IMPORTANT: Update this mapping with actual Lightspeed employee IDs from client\nconst artistMap = {\n  // 'Artist Name in GHL Calendar': 'lightspeed_employee_uuid'\n  // Example entries — replace with real values:\n  // 'Jake': 'employee-uuid-1',\n  // 'Honeybee': 'employee-uuid-2',\n};\n\nconst sale = $json.data[0];\nconst artistName = $('Validate & Extract').first().json.artistName;\nconst mappedEmployeeId = artistMap[artistName] || null;\n\nconst currentEmployeeId = sale.user_id || null;\nconst needsUpdate = mappedEmployeeId && mappedEmployeeId !== currentEmployeeId;\n\nreturn [{\n  json: {\n    saleId: sale.id,\n    currentEmployeeId,\n    mappedEmployeeId,\n    artistName,\n    needsUpdate,\n    contactEmail: $('Validate & Extract').first().json.contactEmail\n  }\n}];"
+        "jsCode": "// Map GHL artist name to Lightspeed employee ID\n// IMPORTANT: Update this mapping with actual Lightspeed employee IDs from client\nconst artistMap = {\n  // 'Artist Name in GHL Calendar': 'lightspeed_employee_uuid'\n  // Example entries \u2014 replace with real values:\n  // 'Jake': 'employee-uuid-1',\n  // 'Honeybee': 'employee-uuid-2',\n};\n\nconst sale = $json.data[0];\nconst artistName = $('Validate & Extract').first().json.artistName;\nconst mappedEmployeeId = artistMap[artistName] || null;\n\nconst currentEmployeeId = sale.user_id || null;\nconst needsUpdate = mappedEmployeeId && mappedEmployeeId !== currentEmployeeId;\n\nreturn [{\n  json: {\n    saleId: sale.id,\n    currentEmployeeId,\n    mappedEmployeeId,\n    artistName,\n    needsUpdate,\n    contactEmail: $('Validate & Extract').first().json.contactEmail\n  }\n}];"
       },
       "id": "map-artist",
-      "name": "Map Artist → Employee ID",
+      "name": "Map Artist \u2192 Employee ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [880, -60]
+      "position": [
+        880,
+        -60
+      ]
     },
     {
       "parameters": {
@@ -134,7 +152,10 @@
       "name": "Needs Attribution Update?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1100, -60]
+      "position": [
+        1100,
+        -60
+      ]
     },
     {
       "parameters": {
@@ -151,14 +172,20 @@
       "name": "Update Sale Employee",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1320, -120],
+      "position": [
+        1320,
+        -120
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "lightspeed-token",
-          "name": "Lightspeed Personal Token"
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {},
@@ -166,17 +193,20 @@
       "name": "Already Correct",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [1320, 0]
+      "position": [
+        1320,
+        0
+      ]
     },
     {
       "parameters": {
-        "workflowId": "={{ /* Set to Customer Matcher workflow ID after import */ '' }}",
+        "workflowId": "vQc7pV2wjDImrvks",
         "options": {},
         "workflowInputs": {
           "values": [
             {
               "name": "email",
-              "value": "={{ $('Map Artist → Employee ID').first().json.contactEmail }}"
+              "value": "={{ $('Map Artist \u2192 Employee ID').first().json.contactEmail }}"
             },
             {
               "name": "firstName",
@@ -197,7 +227,10 @@
       "name": "Get GHL Contact",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [1540, -60]
+      "position": [
+        1540,
+        -60
+      ]
     },
     {
       "parameters": {
@@ -207,21 +240,36 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"customFields\": [\n    { \"key\": \"last_artist_id\", \"field_value\": \"{{ $('Map Artist → Employee ID').first().json.mappedEmployeeId || $('Map Artist → Employee ID').first().json.artistName }}\" }\n  ]\n}",
-        "options": {}
+        "jsonBody": "={\n  \"customFields\": [\n    { \"key\": \"last_artist_id\", \"field_value\": \"{{ $('Map Artist \u2192 Employee ID').first().json.mappedEmployeeId || $('Map Artist \u2192 Employee ID').first().json.artistName }}\" }\n  ]\n}",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        }
       },
       "id": "update-ghl-artist",
       "name": "Update GHL last_artist_id",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1760, -60],
+      "position": [
+        1760,
+        -60
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "ghl-pit-token",
-          "name": "GHL PIT Token"
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {},
@@ -229,60 +277,135 @@
       "name": "No Sale Found (skip)",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [880, 120]
+      "position": [
+        880,
+        120
+      ]
     }
   ],
   "connections": {
     "GHL Appointment Completed Webhook": {
       "main": [
-        [{ "node": "Validate & Extract", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Validate & Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Validate & Extract": {
       "main": [
-        [{ "node": "Find LS Sale by Email + Date", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Find LS Sale by Email + Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Find LS Sale by Email + Date": {
       "main": [
-        [{ "node": "Sale Found?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Sale Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Sale Found?": {
       "main": [
-        [{ "node": "Map Artist → Employee ID", "type": "main", "index": 0 }],
-        [{ "node": "No Sale Found (skip)", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Map Artist \u2192 Employee ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Sale Found (skip)",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Map Artist → Employee ID": {
+    "Map Artist \u2192 Employee ID": {
       "main": [
-        [{ "node": "Needs Attribution Update?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Needs Attribution Update?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Needs Attribution Update?": {
       "main": [
-        [{ "node": "Update Sale Employee", "type": "main", "index": 0 }],
-        [{ "node": "Already Correct", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Update Sale Employee",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Already Correct",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Update Sale Employee": {
       "main": [
-        [{ "node": "Get GHL Contact", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Get GHL Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Already Correct": {
       "main": [
-        [{ "node": "Get GHL Contact", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Get GHL Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Get GHL Contact": {
       "main": [
-        [{ "node": "Update GHL last_artist_id", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Update GHL last_artist_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
   "settings": {
     "executionOrder": "v1"
   },
+  "tags": [
+    {
+      "id": "k2B6iG1Tdu1xzdHk",
+      "name": "TRX"
+    }
+  ],
   "active": false
 }

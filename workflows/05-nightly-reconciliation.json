@@ -1,5 +1,5 @@
 {
-  "name": "WF5 — Nightly Reconciliation",
+  "name": "WF5 \u2014 Nightly Reconciliation",
   "nodes": [
     {
       "parameters": {
@@ -16,7 +16,10 @@
       "name": "Every Night at 11:30 PM",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -26,7 +29,10 @@
       "name": "Build Today's Date",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -48,6 +54,10 @@
             {
               "name": "date_to",
               "value": "={{ $json.dateTo }}"
+            },
+            {
+              "name": "page_size",
+              "value": "200"
             }
           ]
         },
@@ -57,14 +67,20 @@
       "name": "Fetch Today's Closed Sales",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, 0],
+      "position": [
+        440,
+        0
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "lightspeed-token",
-          "name": "Lightspeed Personal Token"
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
@@ -74,7 +90,10 @@
       "name": "Split Sales Into Items",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [660, 0]
+      "position": [
+        660,
+        0
+      ]
     },
     {
       "parameters": {
@@ -112,7 +131,10 @@
       "name": "Has Customer Email?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [880, 0]
+      "position": [
+        880,
+        0
+      ]
     },
     {
       "parameters": {
@@ -133,30 +155,48 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        }
       },
       "id": "search-ghl",
       "name": "Search GHL Contact",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1100, -60],
+      "position": [
+        1100,
+        -60
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "ghl-pit-token",
-          "name": "GHL PIT Token"
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
-        "jsCode": "// Check if contact needs sync (missing tag or wrong date)\nconst contacts = $json.contacts || [];\nconst saleData = $('Has Customer Email?').first().json;\nconst today = saleData.saleDate;\n\nlet needsSync = false;\nlet contactId = null;\nlet reason = '';\n\nif (contacts.length === 0) {\n  needsSync = true;\n  reason = 'Contact not found in GHL';\n} else {\n  const contact = contacts[0];\n  contactId = contact.id;\n  const tags = contact.tags || [];\n  const customFields = contact.customFields || contact.customField || [];\n\n  const hasTag = tags.includes('lightspeed-customer');\n  const saleDateField = customFields.find(f => f.key === 'last_lightspeed_sale_date' || f.id === 'last_lightspeed_sale_date');\n  const hasCorrectDate = saleDateField && saleDateField.value === today;\n\n  if (!hasTag || !hasCorrectDate) {\n    needsSync = true;\n    reason = !hasTag ? 'Missing lightspeed-customer tag' : 'Sale date not updated';\n  }\n}\n\nreturn [{\n  json: {\n    ...saleData,\n    needsSync,\n    contactId,\n    reason\n  }\n}];"
+        "jsCode": "// Check if contact needs sync (missing tag or wrong date)\nconst contacts = $json.contacts || [];\nconst saleData = $('Has Customer Email?').first().json;\nconst today = saleData.saleDate;\n\nlet needsSync = false;\nlet contactId = null;\nlet reason = '';\n\nif (contacts.length === 0) {\n  needsSync = true;\n  reason = 'Contact not found in GHL';\n} else {\n  const contact = contacts[0];\n  contactId = contact.id;\n  const tags = contact.tags || [];\n  const customFields = contact.customFields || contact.customField || [];\n\n  const hasTag = tags.includes('[system] lightspeed-customer');\n  const saleDateField = customFields.find(f => f.key === 'last_lightspeed_sale_date' || f.id === 'last_lightspeed_sale_date');\n  const hasCorrectDate = saleDateField && saleDateField.value === today;\n\n  if (!hasTag || !hasCorrectDate) {\n    needsSync = true;\n    reason = !hasTag ? 'Missing [system] lightspeed-customer tag' : 'Sale date not updated';\n  }\n}\n\nreturn [{\n  json: {\n    ...saleData,\n    needsSync,\n    contactId,\n    reason\n  }\n}];"
       },
       "id": "check-sync-status",
       "name": "Check Sync Status",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1320, -60]
+      "position": [
+        1320,
+        -60
+      ]
     },
     {
       "parameters": {
@@ -185,11 +225,14 @@
       "name": "Needs Sync?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1540, -60]
+      "position": [
+        1540,
+        -60
+      ]
     },
     {
       "parameters": {
-        "workflowId": "={{ /* Set to Customer Matcher workflow ID after import */ '' }}",
+        "workflowId": "vQc7pV2wjDImrvks",
         "options": {},
         "workflowInputs": {
           "values": [
@@ -216,7 +259,10 @@
       "name": "Ensure GHL Contact Exists",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [1760, -120]
+      "position": [
+        1760,
+        -120
+      ]
     },
     {
       "parameters": {
@@ -227,24 +273,39 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"customFields\": [\n    { \"key\": \"last_lightspeed_sale_date\", \"field_value\": \"{{ $('Check Sync Status').first().json.saleDate }}\" },\n    { \"key\": \"last_lightspeed_sale_amount\", \"field_value\": \"{{ $('Check Sync Status').first().json.saleTotal }}\" }\n  ]\n}",
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        }
       },
       "id": "update-contact",
       "name": "Update GHL Contact Fields",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1980, -120],
+      "position": [
+        1980,
+        -120
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "ghl-pit-token",
-          "name": "GHL PIT Token"
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
-        "workflowId": "={{ /* Set to Tag Applier workflow ID after import */ '' }}",
+        "workflowId": "vQc7pV2wjDImrvks",
         "options": {},
         "workflowInputs": {
           "values": [
@@ -254,7 +315,7 @@
             },
             {
               "name": "tags",
-              "value": "={{ ['lightspeed-customer'] }}"
+              "value": "={{ ['[system] lightspeed-customer'] }}"
             }
           ]
         }
@@ -263,7 +324,10 @@
       "name": "Apply lightspeed-customer Tag",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [1980, 0]
+      "position": [
+        1980,
+        0
+      ]
     },
     {
       "parameters": {},
@@ -271,7 +335,10 @@
       "name": "Already Synced",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [1760, 0]
+      "position": [
+        1760,
+        0
+      ]
     },
     {
       "parameters": {},
@@ -279,7 +346,10 @@
       "name": "Skip (No Email)",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [1100, 120]
+      "position": [
+        1100,
+        120
+      ]
     },
     {
       "parameters": {
@@ -293,69 +363,185 @@
       "name": "Send Summary Email",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [2200, -60],
+      "position": [
+        2200,
+        -60
+      ],
       "continueOnFail": true
     }
   ],
   "connections": {
     "Every Night at 11:30 PM": {
       "main": [
-        [{ "node": "Build Today's Date", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Build Today's Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Build Today's Date": {
       "main": [
-        [{ "node": "Fetch Today's Closed Sales", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Fetch Today's Closed Sales",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Fetch Today's Closed Sales": {
       "main": [
-        [{ "node": "Split Sales Into Items", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Split Sales Into Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Split Sales Into Items": {
       "main": [
-        [{ "node": "Has Customer Email?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Has Customer Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Has Customer Email?": {
       "main": [
-        [{ "node": "Search GHL Contact", "type": "main", "index": 0 }],
-        [{ "node": "Skip (No Email)", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Search GHL Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip (No Email)",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Search GHL Contact": {
       "main": [
-        [{ "node": "Check Sync Status", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Check Sync Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Check Sync Status": {
       "main": [
-        [{ "node": "Needs Sync?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Needs Sync?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Needs Sync?": {
       "main": [
-        [{ "node": "Ensure GHL Contact Exists", "type": "main", "index": 0 }],
-        [{ "node": "Already Synced", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Ensure GHL Contact Exists",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Already Synced",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Ensure GHL Contact Exists": {
       "main": [
         [
-          { "node": "Update GHL Contact Fields", "type": "main", "index": 0 },
-          { "node": "Apply lightspeed-customer Tag", "type": "main", "index": 0 }
+          {
+            "node": "Update GHL Contact Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Apply lightspeed-customer Tag",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Update GHL Contact Fields": {
       "main": [
-        [{ "node": "Send Summary Email", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Send Summary Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Synced": {
+      "main": [
+        [
+          {
+            "node": "Send Summary Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip (No Email)": {
+      "main": [
+        [
+          {
+            "node": "Send Summary Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply lightspeed-customer Tag": {
+      "main": [
+        [
+          {
+            "node": "Send Summary Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
   "settings": {
     "executionOrder": "v1"
   },
+  "tags": [
+    {
+      "id": "k2B6iG1Tdu1xzdHk",
+      "name": "TRX"
+    }
+  ],
   "active": false
 }

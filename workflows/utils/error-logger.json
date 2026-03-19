@@ -1,5 +1,5 @@
 {
-  "name": "Util — Error Logger",
+  "name": "Util \u2014 Error Logger",
   "nodes": [
     {
       "parameters": {},
@@ -7,7 +7,10 @@
       "name": "Sub-Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -41,7 +44,10 @@
       "name": "Format Error",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -55,7 +61,10 @@
       "name": "Send Error Email",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [440, 0],
+      "position": [
+        440,
+        0
+      ],
       "continueOnFail": true
     },
     {
@@ -74,28 +83,55 @@
       "name": "Confirm Logged",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [660, 0]
+      "position": [
+        660,
+        0
+      ]
     }
   ],
   "connections": {
     "Sub-Workflow Trigger": {
       "main": [
-        [{ "node": "Format Error", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Format Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Format Error": {
       "main": [
-        [{ "node": "Send Error Email", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Send Error Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Send Error Email": {
       "main": [
-        [{ "node": "Confirm Logged", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Confirm Logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
   "settings": {
     "executionOrder": "v1"
   },
-  "active": false
+  "active": false,
+  "tags": [
+    {
+      "id": "k2B6iG1Tdu1xzdHk",
+      "name": "TRX"
+    }
+  ]
 }

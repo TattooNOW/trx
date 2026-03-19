@@ -1,5 +1,5 @@
 {
-  "name": "WF1 — GHL Deposit → LS Store Credit",
+  "name": "WF1 \u2014 GHL Deposit \u2192 LS Store Credit",
   "nodes": [
     {
       "parameters": {
@@ -13,22 +13,28 @@
       "name": "GHL Payment Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "ghl-deposit-webhook"
     },
     {
       "parameters": {
-        "jsCode": "// Validate required fields from GHL payment webhook\nconst body = $json.body;\n\nconst contactId = body.contact_id || body.contactId;\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst paymentAmount = body.amount || body.payment_amount;\nconst paymentId = body.payment_id || body.id || body.charge_id;\nconst artistName = body.artist_name || body.calendarName || '';\nconst appointmentDate = body.appointment_date || body.startTime || '';\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in payment webhook payload');\n}\nif (!paymentAmount || paymentAmount <= 0) {\n  throw new Error('Missing or invalid payment amount');\n}\nif (!paymentId) {\n  throw new Error('Missing payment ID — required for idempotency');\n}\n\nreturn [{\n  json: {\n    contactId,\n    contactEmail,\n    paymentAmount: parseFloat(paymentAmount),\n    paymentId: String(paymentId),\n    artistName,\n    appointmentDate,\n    rawPayload: body\n  }\n}];"
+        "jsCode": "// Validate required fields from GHL payment webhook\nconst body = $json.body;\n\nconst contactId = body.contact_id || body.contactId;\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst paymentAmount = body.amount || body.payment_amount;\nconst paymentId = body.payment_id || body.id || body.charge_id;\nconst artistName = body.artist_name || body.calendarName || '';\nconst appointmentDate = body.appointment_date || body.startTime || '';\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in payment webhook payload');\n}\nif (!paymentAmount || paymentAmount <= 0) {\n  throw new Error('Missing or invalid payment amount');\n}\nif (!paymentId) {\n  throw new Error('Missing payment ID \u2014 required for idempotency');\n}\n\nreturn [{\n  json: {\n    contactId,\n    contactEmail,\n    paymentAmount: parseFloat(paymentAmount),\n    paymentId: String(paymentId),\n    artistName,\n    appointmentDate,\n    rawPayload: body\n  }\n}];"
       },
       "id": "validate-payload",
       "name": "Validate Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
-        "workflowId": "={{ /* Set to Customer Matcher workflow ID after import */ '' }}",
+        "workflowId": "vQc7pV2wjDImrvks",
         "options": {},
         "workflowInputs": {
           "values": [
@@ -55,7 +61,10 @@
       "name": "Find/Create Customer",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [440, 0]
+      "position": [
+        440,
+        0
+      ]
     },
     {
       "parameters": {
@@ -84,7 +93,10 @@
       "name": "Has LS Customer ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [660, 0]
+      "position": [
+        660,
+        0
+      ]
     },
     {
       "parameters": {
@@ -94,7 +106,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"customer_id\": \"{{ $('Find/Create Customer').item.json.lightspeed_customer_id }}\",\n  \"type\": \"ISSUE\",\n  \"amount\": {{ $('Validate Payload').item.json.paymentAmount }},\n  \"notes\": \"Deposit via booking — {{ $('Validate Payload').item.json.artistName }} {{ $('Validate Payload').item.json.appointmentDate }}\",\n  \"client_id\": \"{{ $('Validate Payload').item.json.paymentId }}\"\n}",
+        "jsonBody": "={\n  \"customer_id\": \"{{ $('Find/Create Customer').item.json.lightspeed_customer_id }}\",\n  \"type\": \"ISSUE\",\n  \"amount\": {{ $('Validate Payload').item.json.paymentAmount }},\n  \"notes\": \"Deposit via booking \u2014 {{ $('Validate Payload').item.json.artistName }} {{ $('Validate Payload').item.json.appointmentDate }}\",\n  \"client_id\": \"{{ $('Validate Payload').item.json.paymentId }}\"\n}",
         "options": {
           "response": {
             "response": {
@@ -107,14 +119,20 @@
       "name": "Issue Store Credit",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, -60],
+      "position": [
+        880,
+        -60
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "lightspeed-token",
-          "name": "Lightspeed Personal Token"
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
@@ -143,7 +161,10 @@
       "name": "Credit Issued OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1100, -60]
+      "position": [
+        1100,
+        -60
+      ]
     },
     {
       "parameters": {
@@ -165,17 +186,20 @@
       "name": "Success",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [1320, -120]
+      "position": [
+        1320,
+        -120
+      ]
     },
     {
       "parameters": {
-        "workflowId": "={{ /* Set to Error Logger workflow ID after import */ '' }}",
+        "workflowId": "NjQ4osMVHKK4l1Wa",
         "options": {},
         "workflowInputs": {
           "values": [
             {
               "name": "workflowName",
-              "value": "WF1 — GHL Deposit → LS Store Credit"
+              "value": "WF1 \u2014 GHL Deposit \u2192 LS Store Credit"
             },
             {
               "name": "errorMessage",
@@ -196,17 +220,20 @@
       "name": "Log Credit Error",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [1320, 0]
+      "position": [
+        1320,
+        0
+      ]
     },
     {
       "parameters": {
-        "workflowId": "={{ /* Set to Error Logger workflow ID after import */ '' }}",
+        "workflowId": "vQc7pV2wjDImrvks",
         "options": {},
         "workflowInputs": {
           "values": [
             {
               "name": "workflowName",
-              "value": "WF1 — GHL Deposit → LS Store Credit"
+              "value": "WF1 \u2014 GHL Deposit \u2192 LS Store Credit"
             },
             {
               "name": "errorMessage",
@@ -227,45 +254,102 @@
       "name": "Log No Customer Error",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [880, 120]
+      "position": [
+        880,
+        120
+      ]
     }
   ],
   "connections": {
     "GHL Payment Webhook": {
       "main": [
-        [{ "node": "Validate Payload", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Validate Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Validate Payload": {
       "main": [
-        [{ "node": "Find/Create Customer", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Find/Create Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Find/Create Customer": {
       "main": [
-        [{ "node": "Has LS Customer ID?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Has LS Customer ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Has LS Customer ID?": {
       "main": [
-        [{ "node": "Issue Store Credit", "type": "main", "index": 0 }],
-        [{ "node": "Log No Customer Error", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Issue Store Credit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log No Customer Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Issue Store Credit": {
       "main": [
-        [{ "node": "Credit Issued OK?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Credit Issued OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Credit Issued OK?": {
       "main": [
-        [{ "node": "Success", "type": "main", "index": 0 }],
-        [{ "node": "Log Credit Error", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Credit Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
   "settings": {
     "executionOrder": "v1"
   },
+  "tags": [
+    {
+      "id": "k2B6iG1Tdu1xzdHk",
+      "name": "TRX"
+    }
+  ],
   "active": false
 }

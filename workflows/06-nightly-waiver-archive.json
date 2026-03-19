@@ -1,5 +1,5 @@
 {
-  "name": "WF6 — Nightly Waiver Archive",
+  "name": "WF6 \u2014 Nightly Waiver Archive",
   "nodes": [
     {
       "parameters": {
@@ -16,7 +16,10 @@
       "name": "Every Night at Midnight",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -26,7 +29,10 @@
       "name": "Build Date & Folder Path",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -55,20 +61,35 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        }
       },
       "id": "fetch-submissions",
       "name": "Fetch Today's Form Submissions",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, 0],
+      "position": [
+        440,
+        0
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "ghl-pit-token",
-          "name": "GHL PIT Token"
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
@@ -78,7 +99,10 @@
       "name": "Filter Consent Forms",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [660, 0]
+      "position": [
+        660,
+        0
+      ]
     },
     {
       "parameters": {
@@ -107,17 +131,23 @@
       "name": "Has Submissions?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [880, 0]
+      "position": [
+        880,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Generate HTML from submission data for PDF conversion\nconst sub = $json.submissionData;\nconst others = sub.others || {};\n\nlet html = `\n<!DOCTYPE html>\n<html>\n<head><style>\n  body { font-family: Arial, sans-serif; margin: 40px; }\n  h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }\n  .field { margin: 10px 0; }\n  .label { font-weight: bold; color: #555; }\n  .value { margin-left: 10px; }\n  .footer { margin-top: 40px; font-size: 12px; color: #888; }\n</style></head>\n<body>\n  <h1>TRX Tattoos & Piercing — Consent Form</h1>\n  <p><strong>Form Type:</strong> ${$json.formType}</p>\n  <p><strong>Date:</strong> ${sub.createdAt || new Date().toISOString()}</p>\n  <hr>\n`;\n\nfor (const [key, value] of Object.entries(others)) {\n  html += `<div class=\"field\"><span class=\"label\">${key}:</span> <span class=\"value\">${value}</span></div>\\n`;\n}\n\nhtml += `\n  <div class=\"footer\">\n    <p>Archived by TRX automated system. Submission ID: ${sub.id}</p>\n    <p>Missouri 2-year retention requirement — do not delete before retention period expires.</p>\n  </div>\n</body>\n</html>`;\n\nreturn [{ json: { ...$json, html, binary: null } }];"
+        "jsCode": "// Generate HTML from submission data for PDF conversion\nconst sub = $json.submissionData;\nconst others = sub.others || {};\n\nlet html = `\n<!DOCTYPE html>\n<html>\n<head><style>\n  body { font-family: Arial, sans-serif; margin: 40px; }\n  h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }\n  .field { margin: 10px 0; }\n  .label { font-weight: bold; color: #555; }\n  .value { margin-left: 10px; }\n  .footer { margin-top: 40px; font-size: 12px; color: #888; }\n</style></head>\n<body>\n  <h1>TRX Tattoos & Piercing \u2014 Consent Form</h1>\n  <p><strong>Form Type:</strong> ${$json.formType}</p>\n  <p><strong>Date:</strong> ${sub.createdAt || new Date().toISOString()}</p>\n  <hr>\n`;\n\nfor (const [key, value] of Object.entries(others)) {\n  html += `<div class=\"field\"><span class=\"label\">${key}:</span> <span class=\"value\">${value}</span></div>\\n`;\n}\n\nhtml += `\n  <div class=\"footer\">\n    <p>Archived by TRX automated system. Submission ID: ${sub.id}</p>\n    <p>Missouri 2-year retention requirement \u2014 do not delete before retention period expires.</p>\n  </div>\n</body>\n</html>`;\n\nreturn [{ json: { ...$json, html, binary: null } }];"
       },
       "id": "generate-html",
       "name": "Generate HTML for PDF",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1100, -60]
+      "position": [
+        1100,
+        -60
+      ]
     },
     {
       "parameters": {
@@ -131,7 +161,10 @@
       "name": "Convert to File",
       "type": "n8n-nodes-base.convertToFile",
       "typeVersion": 1.1,
-      "position": [1320, -60]
+      "position": [
+        1320,
+        -60
+      ]
     },
     {
       "parameters": {
@@ -146,7 +179,10 @@
       "name": "Upload to Google Drive",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [1540, -60],
+      "position": [
+        1540,
+        -60
+      ],
       "credentials": {
         "googleDriveOAuth2Api": {
           "id": "google-drive-creds",
@@ -182,17 +218,20 @@
       "name": "Upload OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1760, -60]
+      "position": [
+        1760,
+        -60
+      ]
     },
     {
       "parameters": {
-        "workflowId": "={{ /* Set to Error Logger workflow ID after import */ '' }}",
+        "workflowId": "NjQ4osMVHKK4l1Wa",
         "options": {},
         "workflowInputs": {
           "values": [
             {
               "name": "workflowName",
-              "value": "WF6 — Nightly Waiver Archive"
+              "value": "WF6 \u2014 Nightly Waiver Archive"
             },
             {
               "name": "errorMessage",
@@ -213,7 +252,10 @@
       "name": "Log Upload Error",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [1980, -120]
+      "position": [
+        1980,
+        -120
+      ]
     },
     {
       "parameters": {},
@@ -221,7 +263,10 @@
       "name": "Upload Success",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [1980, 0]
+      "position": [
+        1980,
+        0
+      ]
     },
     {
       "parameters": {},
@@ -229,60 +274,135 @@
       "name": "No Waivers Today",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [1100, 120]
+      "position": [
+        1100,
+        120
+      ]
     }
   ],
   "connections": {
     "Every Night at Midnight": {
       "main": [
-        [{ "node": "Build Date & Folder Path", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Build Date & Folder Path",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Build Date & Folder Path": {
       "main": [
-        [{ "node": "Fetch Today's Form Submissions", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Fetch Today's Form Submissions",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Fetch Today's Form Submissions": {
       "main": [
-        [{ "node": "Filter Consent Forms", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Filter Consent Forms",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Filter Consent Forms": {
       "main": [
-        [{ "node": "Has Submissions?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Has Submissions?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Has Submissions?": {
       "main": [
-        [{ "node": "Generate HTML for PDF", "type": "main", "index": 0 }],
-        [{ "node": "No Waivers Today", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Generate HTML for PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Waivers Today",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Generate HTML for PDF": {
       "main": [
-        [{ "node": "Convert to File", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Convert to File": {
       "main": [
-        [{ "node": "Upload to Google Drive", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Upload to Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Upload to Google Drive": {
       "main": [
-        [{ "node": "Upload OK?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Upload OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Upload OK?": {
       "main": [
-        [{ "node": "Log Upload Error", "type": "main", "index": 0 }],
-        [{ "node": "Upload Success", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Log Upload Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upload Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
   "settings": {
     "executionOrder": "v1"
   },
+  "tags": [
+    {
+      "id": "k2B6iG1Tdu1xzdHk",
+      "name": "TRX"
+    }
+  ],
   "active": false
 }

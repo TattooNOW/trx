@@ -1,5 +1,5 @@
 {
-  "name": "WF3 — Cancel/No-Show → Reverse Store Credit",
+  "name": "WF3 \u2014 Cancel/No-Show \u2192 Reverse Store Credit",
   "nodes": [
     {
       "parameters": {
@@ -13,18 +13,24 @@
       "name": "GHL Appointment Status Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "ghl-cancel-webhook"
     },
     {
       "parameters": {
-        "jsCode": "// Extract and validate appointment cancellation/no-show data\nconst body = $json.body || $json;\n\nconst contactId = body.contact_id || body.contactId;\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst appointmentDate = body.startTime || body.appointment_date || body.selectedTimeslot;\nconst cancellationTimestamp = body.dateUpdated || body.updatedAt || new Date().toISOString();\nconst status = (body.status || body.appointmentStatus || '').toLowerCase();\nconst depositAmount = parseFloat(body.deposit_amount || body.customFields?.deposit_amount || 0);\nconst artistName = body.calendarName || body.artist_name || '';\nconst appointmentType = body.title || body.appointment_type || 'Appointment';\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in appointment webhook');\n}\n\nif (status !== 'cancelled' && status !== 'no_show' && status !== 'no-show' && status !== 'noshow') {\n  // Not a cancellation or no-show — skip\n  return [];\n}\n\n// Calculate hours between cancellation and appointment\nconst appointmentTime = new Date(appointmentDate).getTime();\nconst cancelTime = new Date(cancellationTimestamp).getTime();\nconst hoursDiff = (appointmentTime - cancelTime) / (1000 * 60 * 60);\nconst isNoShow = status === 'no_show' || status === 'no-show' || status === 'noshow';\nconst isLateCancel = !isNoShow && hoursDiff < 48;\nconst isFullRefund = !isNoShow && hoursDiff >= 48;\n\nreturn [{\n  json: {\n    contactId,\n    contactEmail,\n    appointmentDate,\n    cancellationTimestamp,\n    status,\n    depositAmount,\n    artistName,\n    appointmentType,\n    hoursDiff: Math.round(hoursDiff * 10) / 10,\n    isNoShow,\n    isLateCancel,\n    isFullRefund,\n    path: isFullRefund ? 'refund' : 'forfeit'\n  }\n}];"
+        "jsCode": "// Extract and validate appointment cancellation/no-show data\nconst body = $json.body || $json;\n\nconst contactId = body.contact_id || body.contactId;\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst appointmentDate = body.startTime || body.appointment_date || body.selectedTimeslot;\nconst cancellationTimestamp = body.dateUpdated || body.updatedAt || new Date().toISOString();\nconst status = (body.status || body.appointmentStatus || '').toLowerCase();\nconst depositAmount = parseFloat(body.deposit_amount || body.customFields?.deposit_amount || 0);\nconst artistName = body.calendarName || body.artist_name || '';\nconst appointmentType = body.title || body.appointment_type || 'Appointment';\nconst calendarName = (body.calendarName || body.calendar_name || '').toLowerCase();\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in appointment webhook');\n}\n\nif (status !== 'cancelled' && status !== 'no_show' && status !== 'no-show' && status !== 'noshow') {\n  // Not a cancellation or no-show \u2014 skip\n  return [];\n}\n\n// Determine service type from calendar name\nconst serviceType = calendarName.includes('piercing') ? 'piercing' : 'tattoo';\n\n// Calculate hours between cancellation and appointment\nconst appointmentTime = new Date(appointmentDate).getTime();\nconst cancelTime = new Date(cancellationTimestamp).getTime();\nconst hoursDiff = (appointmentTime - cancelTime) / (1000 * 60 * 60);\nconst isNoShow = status === 'no_show' || status === 'no-show' || status === 'noshow';\nconst isLateCancel = !isNoShow && hoursDiff < 48;\nconst isFullRefund = !isNoShow && hoursDiff >= 48;\n\n// Build tag: [client] tattoo: no-show OR [client] piercing: late-cancel etc.\nconst tagAction = isNoShow ? 'no-show' : 'late-cancel';\nconst tag = `[client] ${serviceType}: ${tagAction}`;\n\nreturn [{\n  json: {\n    contactId,\n    contactEmail,\n    appointmentDate,\n    cancellationTimestamp,\n    status,\n    depositAmount,\n    artistName,\n    appointmentType,\n    serviceType,\n    hoursDiff: Math.round(hoursDiff * 10) / 10,\n    isNoShow,\n    isLateCancel,\n    isFullRefund,\n    path: isFullRefund ? 'refund' : 'forfeit',\n    tag\n  }\n}];"
       },
       "id": "validate-extract",
       "name": "Validate & Extract",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -47,14 +53,20 @@
       "name": "Find LS Customer",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, 0],
+      "position": [
+        440,
+        0
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "lightspeed-token",
-          "name": "Lightspeed Personal Token"
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
@@ -83,7 +95,10 @@
       "name": "LS Customer Found?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [660, 0]
+      "position": [
+        660,
+        0
+      ]
     },
     {
       "parameters": {
@@ -106,24 +121,33 @@
       "name": "Get Store Credits",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, -60],
+      "position": [
+        880,
+        -60
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "lightspeed-token",
-          "name": "Lightspeed Personal Token"
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
-        "jsCode": "// Find the matching store credit by notes field\nconst credits = $json.data || [];\nconst appointmentData = $('Validate & Extract').first().json;\n\n// Look for the deposit matching the appointment date / artist\nconst matchingCredit = credits.find(c => {\n  if (c.type !== 'ISSUE') return false;\n  const notes = (c.notes || '').toLowerCase();\n  // Match on appointment date or artist name\n  const dateMatch = appointmentData.appointmentDate && notes.includes(appointmentData.appointmentDate.split('T')[0]);\n  const artistMatch = appointmentData.artistName && notes.includes(appointmentData.artistName.toLowerCase());\n  return dateMatch || artistMatch;\n});\n\nif (!matchingCredit) {\n  // No matching credit found — still proceed but flag it\n  return [{\n    json: {\n      ...appointmentData,\n      creditFound: false,\n      creditId: null,\n      creditAmount: appointmentData.depositAmount,\n      customerId: $('Find LS Customer').first().json.data[0].id\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...appointmentData,\n    creditFound: true,\n    creditId: matchingCredit.id,\n    creditAmount: parseFloat(matchingCredit.amount),\n    customerId: $('Find LS Customer').first().json.data[0].id\n  }\n}];"
+        "jsCode": "// Find the matching store credit by notes field\nconst credits = $json.data || [];\nconst appointmentData = $('Validate & Extract').first().json;\n\n// Look for the deposit matching the appointment date / artist\nconst matchingCredit = credits.find(c => {\n  if (c.type !== 'ISSUE') return false;\n  const notes = (c.notes || '').toLowerCase();\n  // Match on appointment date or artist name\n  const dateMatch = appointmentData.appointmentDate && notes.includes(appointmentData.appointmentDate.split('T')[0]);\n  const artistMatch = appointmentData.artistName && notes.includes(appointmentData.artistName.toLowerCase());\n  return dateMatch || artistMatch;\n});\n\nif (!matchingCredit) {\n  // No matching credit found \u2014 still proceed but flag it\n  return [{\n    json: {\n      ...appointmentData,\n      creditFound: false,\n      creditId: null,\n      creditAmount: appointmentData.depositAmount,\n      customerId: $('Find LS Customer').first().json.data[0].id\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...appointmentData,\n    creditFound: true,\n    creditId: matchingCredit.id,\n    creditAmount: parseFloat(matchingCredit.amount),\n    customerId: $('Find LS Customer').first().json.data[0].id\n  }\n}];"
       },
       "id": "find-matching-credit",
       "name": "Find Matching Credit",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1100, -60]
+      "position": [
+        1100,
+        -60
+      ]
     },
     {
       "parameters": {
@@ -152,7 +176,10 @@
       "name": "Refund or Forfeit?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1320, -60]
+      "position": [
+        1320,
+        -60
+      ]
     },
     {
       "parameters": {
@@ -162,27 +189,33 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"customer_id\": \"{{ $json.customerId }}\",\n  \"type\": \"REVERSE\",\n  \"amount\": {{ $json.creditAmount }},\n  \"notes\": \"Refund — cancelled {{ $json.hoursDiff }}hrs before appointment ({{ $json.appointmentType }})\"\n}",
+        "jsonBody": "={\n  \"customer_id\": \"{{ $json.customerId }}\",\n  \"type\": \"REVERSE\",\n  \"amount\": {{ $json.creditAmount }},\n  \"notes\": \"Refund \u2014 cancelled {{ $json.hoursDiff }}hrs before appointment ({{ $json.appointmentType }})\"\n}",
         "options": {}
       },
       "id": "reverse-refund",
       "name": "Reverse Credit (Refund)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1540, -180],
+      "position": [
+        1540,
+        -180
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "lightspeed-token",
-          "name": "Lightspeed Personal Token"
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
         "fromEmail": "={{ $env.OPS_EMAIL }}",
         "toEmail": "={{ $env.OPS_EMAIL }}",
-        "subject": "=TRX: Process Stripe Refund — {{ $('Validate & Extract').first().json.contactEmail }}",
+        "subject": "=TRX: Process Stripe Refund \u2014 {{ $('Validate & Extract').first().json.contactEmail }}",
         "emailType": "text",
         "message": "=A deposit has been refunded in Lightspeed (cancelled {{ $('Validate & Extract').first().json.hoursDiff }}hrs before appointment).\n\nClient: {{ $('Validate & Extract').first().json.contactEmail }}\nAmount: ${{ $('Validate & Extract').first().json.creditAmount }}\nAppointment: {{ $('Validate & Extract').first().json.appointmentType }} on {{ $('Validate & Extract').first().json.appointmentDate }}\n\nACTION REQUIRED: Process the corresponding Stripe refund manually in GHL."
       },
@@ -190,7 +223,10 @@
       "name": "Notify Ops: Process Stripe Refund",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [1760, -180],
+      "position": [
+        1760,
+        -180
+      ],
       "continueOnFail": true
     },
     {
@@ -201,25 +237,31 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"customer_id\": \"{{ $json.customerId }}\",\n  \"type\": \"REVERSE\",\n  \"amount\": {{ $json.creditAmount }},\n  \"notes\": \"Deposit forfeited — {{ $json.isNoShow ? 'no-show' : 'late cancel (<48hrs)' }} — {{ $json.appointmentType }} on {{ $json.appointmentDate }}\"\n}",
+        "jsonBody": "={\n  \"customer_id\": \"{{ $json.customerId }}\",\n  \"type\": \"REVERSE\",\n  \"amount\": {{ $json.creditAmount }},\n  \"notes\": \"Deposit forfeited \u2014 {{ $json.isNoShow ? 'no-show' : 'late cancel (<48hrs)' }} \u2014 {{ $json.appointmentType }} on {{ $json.appointmentDate }}\"\n}",
         "options": {}
       },
       "id": "reverse-forfeit",
       "name": "Reverse Credit (Forfeit)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1540, 60],
+      "position": [
+        1540,
+        60
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "lightspeed-token",
-          "name": "Lightspeed Personal Token"
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
-        "workflowId": "={{ /* Set to Customer Matcher workflow ID after import */ '' }}",
+        "workflowId": "vQc7pV2wjDImrvks",
         "options": {},
         "workflowInputs": {
           "values": [
@@ -246,7 +288,10 @@
       "name": "Get GHL Contact",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [1760, 60]
+      "position": [
+        1760,
+        60
+      ]
     },
     {
       "parameters": {
@@ -256,21 +301,36 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"tags\": [\"{{ $('Validate & Extract').first().json.isNoShow ? 'no-show' : 'late-cancel' }}\"]\n}",
-        "options": {}
+        "jsonBody": "={\n  \"tags\": [\"{{ $json.tag || $(\"Validate & Extract\").first().json.tag }}\"]\n}",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        }
       },
       "id": "tag-noshow",
       "name": "Tag No-Show/Late-Cancel",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1980, 0],
+      "position": [
+        1980,
+        0
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "ghl-pit-token",
-          "name": "GHL PIT Token"
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
@@ -280,31 +340,46 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"body\": \"Deposit forfeited — {{ $('Validate & Extract').first().json.appointmentDate }} — {{ $('Validate & Extract').first().json.appointmentType }}\"\n}",
-        "options": {}
+        "jsonBody": "={\n  \"body\": \"Deposit forfeited \u2014 {{ $('Validate & Extract').first().json.appointmentDate }} \u2014 {{ $('Validate & Extract').first().json.appointmentType }}\"\n}",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        }
       },
       "id": "add-forfeit-note",
       "name": "Add Forfeit Note",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1980, 120],
+      "position": [
+        1980,
+        120
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "ghl-pit-token",
-          "name": "GHL PIT Token"
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
-        "workflowId": "={{ /* Set to Error Logger workflow ID after import */ '' }}",
+        "workflowId": "vQc7pV2wjDImrvks",
         "options": {},
         "workflowInputs": {
           "values": [
             {
               "name": "workflowName",
-              "value": "WF3 — Cancel/No-Show → Reverse Credit"
+              "value": "WF3 \u2014 Cancel/No-Show \u2192 Reverse Credit"
             },
             {
               "name": "errorMessage",
@@ -325,62 +400,139 @@
       "name": "Log: No LS Customer",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [880, 120]
+      "position": [
+        880,
+        120
+      ]
     }
   ],
   "connections": {
     "GHL Appointment Status Webhook": {
       "main": [
-        [{ "node": "Validate & Extract", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Validate & Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Validate & Extract": {
       "main": [
-        [{ "node": "Find LS Customer", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Find LS Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Find LS Customer": {
       "main": [
-        [{ "node": "LS Customer Found?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "LS Customer Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "LS Customer Found?": {
       "main": [
-        [{ "node": "Get Store Credits", "type": "main", "index": 0 }],
-        [{ "node": "Log: No LS Customer", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Get Store Credits",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log: No LS Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Get Store Credits": {
       "main": [
-        [{ "node": "Find Matching Credit", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Find Matching Credit",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Find Matching Credit": {
       "main": [
-        [{ "node": "Refund or Forfeit?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Refund or Forfeit?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Refund or Forfeit?": {
       "main": [
-        [{ "node": "Reverse Credit (Refund)", "type": "main", "index": 0 }],
-        [{ "node": "Reverse Credit (Forfeit)", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Reverse Credit (Refund)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reverse Credit (Forfeit)",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Reverse Credit (Refund)": {
       "main": [
-        [{ "node": "Notify Ops: Process Stripe Refund", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Notify Ops: Process Stripe Refund",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Reverse Credit (Forfeit)": {
       "main": [
-        [{ "node": "Get GHL Contact", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Get GHL Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Get GHL Contact": {
       "main": [
         [
-          { "node": "Tag No-Show/Late-Cancel", "type": "main", "index": 0 },
-          { "node": "Add Forfeit Note", "type": "main", "index": 0 }
+          {
+            "node": "Tag No-Show/Late-Cancel",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Add Forfeit Note",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     }
@@ -388,5 +540,11 @@
   "settings": {
     "executionOrder": "v1"
   },
+  "tags": [
+    {
+      "id": "k2B6iG1Tdu1xzdHk",
+      "name": "TRX"
+    }
+  ],
   "active": false
 }

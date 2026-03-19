@@ -1,5 +1,5 @@
 {
-  "name": "WF7 — Low Stock SMS Alert",
+  "name": "WF7 \u2014 Low Stock SMS Alert",
   "nodes": [
     {
       "parameters": {
@@ -13,28 +13,37 @@
       "name": "LS Product Update Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "ls-product-update-webhook"
     },
     {
       "parameters": {
-        "jsCode": "// Extract product data and check if jewelry category\nconst body = $json.body || $json;\n\nconst productName = body.name || body.handle || 'Unknown Product';\nconst sku = body.sku || body.supply_price || '';\nconst categoryName = (body.product_type?.name || body.type || body.brand_name || '').toLowerCase();\n\n// Check if this is a jewelry product\nconst jewelryKeywords = ['jewelry', 'jewellery', 'ring', 'necklace', 'earring', 'piercing jewelry', 'body jewelry'];\nconst isJewelry = jewelryKeywords.some(kw => categoryName.includes(kw));\n\nif (!isJewelry) {\n  return []; // Skip non-jewelry products\n}\n\n// Get inventory count and reorder point\nconst inventory = body.inventory || [];\nconst primaryInventory = Array.isArray(inventory) && inventory.length > 0 ? inventory[0] : body;\nconst currentCount = parseInt(primaryInventory.count || primaryInventory.current_amount || 0, 10);\nconst reorderPoint = parseInt(primaryInventory.reorder_point || primaryInventory.reorder_level || 0, 10);\n\nif (reorderPoint <= 0) {\n  return []; // No reorder point set — skip\n}\n\nconst isLow = currentCount <= reorderPoint;\nconst isSoldOut = currentCount === 0;\n\nif (!isLow) {\n  return []; // Stock is fine — skip\n}\n\nreturn [{\n  json: {\n    productName,\n    sku,\n    categoryName,\n    currentCount,\n    reorderPoint,\n    isLow,\n    isSoldOut,\n    productId: body.id || ''\n  }\n}];"
+        "jsCode": "// Extract product data and check if jewelry category\nconst body = $json.body || $json;\n\nconst productName = body.name || body.handle || 'Unknown Product';\nconst sku = body.sku || body.supply_price || '';\nconst categoryName = (body.product_type?.name || body.type || body.brand_name || '').toLowerCase();\n\n// Check if this is a jewelry product\nconst jewelryKeywords = ['jewelry', 'jewellery', 'ring', 'necklace', 'earring', 'piercing jewelry', 'body jewelry'];\nconst isJewelry = jewelryKeywords.some(kw => categoryName.includes(kw));\n\nif (!isJewelry) {\n  return []; // Skip non-jewelry products\n}\n\n// Get inventory count and reorder point\nconst inventory = body.inventory || [];\nconst primaryInventory = Array.isArray(inventory) && inventory.length > 0 ? inventory[0] : body;\nconst currentCount = parseInt(primaryInventory.count || primaryInventory.current_amount || 0, 10);\nconst reorderPoint = parseInt(primaryInventory.reorder_point || primaryInventory.reorder_level || 0, 10);\n\nif (reorderPoint <= 0) {\n  return []; // No reorder point set \u2014 skip\n}\n\nconst isLow = currentCount <= reorderPoint;\nconst isSoldOut = currentCount === 0;\n\nif (!isLow) {\n  return []; // Stock is fine \u2014 skip\n}\n\nreturn [{\n  json: {\n    productName,\n    sku,\n    categoryName,\n    currentCount,\n    reorderPoint,\n    isLow,\n    isSoldOut,\n    productId: body.id || ''\n  }\n}];"
       },
       "id": "filter-jewelry",
       "name": "Filter Jewelry + Check Stock",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Deduplication: check if alert was sent for this SKU in last 24 hours\nconst product = $json;\nconst sku = product.sku || product.productId;\n\n// Use n8n static data for dedup tracking\nconst staticData = $getWorkflowStaticData('global');\nconst alertLog = staticData.alertLog || {};\nconst now = Date.now();\nconst twentyFourHours = 24 * 60 * 60 * 1000;\n\n// Clean up old entries\nfor (const [key, timestamp] of Object.entries(alertLog)) {\n  if (now - timestamp > twentyFourHours) {\n    delete alertLog[key];\n  }\n}\n\n// Check dedup\nif (alertLog[sku] && (now - alertLog[sku]) < twentyFourHours) {\n  // Already alerted within 24 hours — skip\n  return [];\n}\n\n// Record this alert\nalertLog[sku] = now;\nstaticData.alertLog = alertLog;\n\n// Check watched SKUs for immediate SOLD notification\nconst watchedSkus = staticData.watchedSkus || [];\nconst isWatched = watchedSkus.includes(sku);\n\nreturn [{\n  json: {\n    ...product,\n    isWatched,\n    alertType: product.isSoldOut && isWatched ? 'SOLD' : 'LOW_STOCK'\n  }\n}];"
+        "jsCode": "// Deduplication: check if alert was sent for this SKU in last 24 hours\nconst product = $json;\nconst sku = product.sku || product.productId;\n\n// Use n8n static data for dedup tracking\nconst staticData = $getWorkflowStaticData('global');\nconst alertLog = staticData.alertLog || {};\nconst now = Date.now();\nconst twentyFourHours = 24 * 60 * 60 * 1000;\n\n// Clean up old entries\nfor (const [key, timestamp] of Object.entries(alertLog)) {\n  if (now - timestamp > twentyFourHours) {\n    delete alertLog[key];\n  }\n}\n\n// Check dedup\nif (alertLog[sku] && (now - alertLog[sku]) < twentyFourHours) {\n  // Already alerted within 24 hours \u2014 skip\n  return [];\n}\n\n// Record this alert\nalertLog[sku] = now;\nstaticData.alertLog = alertLog;\n\n// Check watched SKUs for immediate SOLD notification\nconst watchedSkus = staticData.watchedSkus || [];\nconst isWatched = watchedSkus.includes(sku);\n\nreturn [{\n  json: {\n    ...product,\n    isWatched,\n    alertType: product.isSoldOut && isWatched ? 'SOLD' : 'LOW_STOCK'\n  }\n}];"
       },
       "id": "dedup-check",
       "name": "Deduplicate (24hr window)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 0]
+      "position": [
+        440,
+        0
+      ]
     },
     {
       "parameters": {
@@ -63,82 +72,151 @@
       "name": "SOLD or LOW_STOCK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [660, 0]
+      "position": [
+        660,
+        0
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://services.leadconnectorhq.com/conversations/messages",
+        "url": "=https://services.leadconnectorhq.com/conversations/messages/inbound",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $env.HONEYBEE_PHONE }}\",\n  \"message\": \"🚨 SOLD: {{ $json.productName }} is now SOLD OUT. SKU: {{ $json.sku }}\"\n}",
-        "options": {}
+        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"conversationProviderId\": \"twilio\",\n  \"contactId\": \"{{ $env.ALERT_CONTACT_ID }}\",\n  \"message\": \"SOLD OUT: {{ $json.productName }}. SKU: {{ $json.sku }}\"\n}",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        }
       },
       "id": "sms-sold",
       "name": "SMS: SOLD Alert",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, -60],
+      "position": [
+        880,
+        -60
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "ghl-pit-token",
-          "name": "GHL PIT Token"
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://services.leadconnectorhq.com/conversations/messages",
+        "url": "=https://services.leadconnectorhq.com/conversations/messages/inbound",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $env.HONEYBEE_PHONE }}\",\n  \"message\": \"Low stock alert: {{ $json.productName }} is at {{ $json.currentCount }} units (reorder point: {{ $json.reorderPoint }}). SKU: {{ $json.sku }}\"\n}",
-        "options": {}
+        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"conversationProviderId\": \"twilio\",\n  \"contactId\": \"{{ $env.ALERT_CONTACT_ID }}\",\n  \"message\": \"Low stock: {{ $json.productName }} at {{ $json.currentCount }} units (reorder: {{ $json.reorderPoint }}). SKU: {{ $json.sku }}\"\n}",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        }
       },
       "id": "sms-low-stock",
       "name": "SMS: Low Stock Alert",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 60],
+      "position": [
+        880,
+        60
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "ghl-pit-token",
-          "name": "GHL PIT Token"
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     }
   ],
   "connections": {
     "LS Product Update Webhook": {
       "main": [
-        [{ "node": "Filter Jewelry + Check Stock", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Filter Jewelry + Check Stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Filter Jewelry + Check Stock": {
       "main": [
-        [{ "node": "Deduplicate (24hr window)", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Deduplicate (24hr window)",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Deduplicate (24hr window)": {
       "main": [
-        [{ "node": "SOLD or LOW_STOCK?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "SOLD or LOW_STOCK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "SOLD or LOW_STOCK?": {
       "main": [
-        [{ "node": "SMS: SOLD Alert", "type": "main", "index": 0 }],
-        [{ "node": "SMS: Low Stock Alert", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "SMS: SOLD Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SMS: Low Stock Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
   "settings": {
     "executionOrder": "v1"
   },
+  "tags": [
+    {
+      "id": "k2B6iG1Tdu1xzdHk",
+      "name": "TRX"
+    }
+  ],
   "active": false
 }

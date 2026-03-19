@@ -1,5 +1,5 @@
 {
-  "name": "Util — Customer Matcher",
+  "name": "Util \u2014 Customer Matcher",
   "nodes": [
     {
       "parameters": {},
@@ -7,7 +7,10 @@
       "name": "Sub-Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -37,7 +40,10 @@
       "name": "Extract Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -66,14 +72,20 @@
       "name": "Search Lightspeed Customer",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, -120],
+      "position": [
+        440,
+        -120
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "lightspeed-token",
-          "name": "Lightspeed Personal Token"
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
@@ -94,20 +106,35 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        }
       },
       "id": "ghl-search",
       "name": "Search GHL Contact",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, 120],
+      "position": [
+        440,
+        120
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "ghl-pit-token",
-          "name": "GHL PIT Token"
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
@@ -136,7 +163,10 @@
       "name": "LS Customer Exists?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [700, -120]
+      "position": [
+        700,
+        -120
+      ]
     },
     {
       "parameters": {
@@ -171,14 +201,20 @@
       "name": "Create LS Customer",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [960, -60],
+      "position": [
+        960,
+        -60
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "lightspeed-token",
-          "name": "Lightspeed Personal Token"
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
@@ -207,7 +243,10 @@
       "name": "GHL Contact Exists?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [700, 120]
+      "position": [
+        700,
+        120
+      ]
     },
     {
       "parameters": {
@@ -246,20 +285,35 @@
               "fullResponse": false
             }
           }
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
         }
       },
       "id": "ghl-create",
       "name": "Create GHL Contact",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [960, 180],
+      "position": [
+        960,
+        180
+      ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "ghl-pit-token",
-          "name": "GHL PIT Token"
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
@@ -269,58 +323,129 @@
       "name": "Build Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1220, 0]
+      "position": [
+        1220,
+        0
+      ]
     }
   ],
   "connections": {
     "Sub-Workflow Trigger": {
       "main": [
-        [{ "node": "Extract Input", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Extract Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Extract Input": {
       "main": [
         [
-          { "node": "Search Lightspeed Customer", "type": "main", "index": 0 },
-          { "node": "Search GHL Contact", "type": "main", "index": 0 }
+          {
+            "node": "Search Lightspeed Customer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search GHL Contact",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Search Lightspeed Customer": {
       "main": [
-        [{ "node": "LS Customer Exists?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "LS Customer Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Search GHL Contact": {
       "main": [
-        [{ "node": "GHL Contact Exists?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "GHL Contact Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "LS Customer Exists?": {
       "main": [
-        [{ "node": "Build Result", "type": "main", "index": 0 }],
-        [{ "node": "Create LS Customer", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Build Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create LS Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "GHL Contact Exists?": {
       "main": [
-        [{ "node": "Build Result", "type": "main", "index": 0 }],
-        [{ "node": "Create GHL Contact", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Build Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create GHL Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Create LS Customer": {
       "main": [
-        [{ "node": "Build Result", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Build Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Create GHL Contact": {
       "main": [
-        [{ "node": "Build Result", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Build Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
   "settings": {
     "executionOrder": "v1"
   },
-  "active": false
+  "active": false,
+  "tags": [
+    {
+      "id": "k2B6iG1Tdu1xzdHk",
+      "name": "TRX"
+    }
+  ]
 }
