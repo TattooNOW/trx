@@ -48,12 +48,16 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/customers",
+        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/search",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
+            {
+              "name": "type",
+              "value": "customers"
+            },
             {
               "name": "email",
               "value": "={{ $json.email }}"
@@ -94,18 +98,6 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "locationId",
-              "value": "n3G3ccCrPjsSH9bGlfIQ"
-            },
-            {
-              "name": "query",
-              "value": "={{ $('Extract Input').item.json.email }}"
-            }
-          ]
-        },
         "options": {},
         "sendHeaders": true,
         "headerParameters": {
@@ -115,7 +107,9 @@
               "value": "2021-07-28"
             }
           ]
-        }
+        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"locationId\": \"n3G3ccCrPjsSH9bGlfIQ\",\n  \"query\": \"{{ $('Extract Input').item.json.email }}\"\n}"
       },
       "id": "ghl-search",
       "name": "Search GHL Contact",
@@ -147,7 +141,7 @@
           "conditions": [
             {
               "id": "ls-found",
-              "leftValue": "={{ $('Search Lightspeed Customer').json.data?.some(c => c.email && c.email.toLowerCase() === $('Extract Input').item.json.email.toLowerCase()) }}",
+              "leftValue": "={{ ($('Search Lightspeed Customer').json.data || []).length > 0 }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -175,27 +169,9 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "first_name",
-              "value": "={{ $('Extract Input').item.json.firstName }}"
-            },
-            {
-              "name": "last_name",
-              "value": "={{ $('Extract Input').item.json.lastName }}"
-            },
-            {
-              "name": "email",
-              "value": "={{ $('Extract Input').item.json.email }}"
-            },
-            {
-              "name": "phone",
-              "value": "={{ $('Extract Input').item.json.phone }}"
-            }
-          ]
-        },
-        "options": {}
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"first_name\": \"{{ $('Extract Input').item.json.firstName }}\",\n  \"last_name\": \"{{ $('Extract Input').item.json.lastName }}\",\n  \"email\": \"{{ $('Extract Input').item.json.email }}\",\n  \"phone\": \"{{ $('Extract Input').item.json.phone }}\"\n}"
       },
       "id": "ls-create",
       "name": "Create LS Customer",
@@ -255,30 +231,6 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "locationId",
-              "value": "n3G3ccCrPjsSH9bGlfIQ"
-            },
-            {
-              "name": "firstName",
-              "value": "={{ $('Extract Input').item.json.firstName }}"
-            },
-            {
-              "name": "lastName",
-              "value": "={{ $('Extract Input').item.json.lastName }}"
-            },
-            {
-              "name": "email",
-              "value": "={{ $('Extract Input').item.json.email }}"
-            },
-            {
-              "name": "phone",
-              "value": "={{ $('Extract Input').item.json.phone }}"
-            }
-          ]
-        },
         "options": {
           "response": {
             "response": {
@@ -294,7 +246,9 @@
               "value": "2021-07-28"
             }
           ]
-        }
+        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"locationId\": \"n3G3ccCrPjsSH9bGlfIQ\",\n  \"firstName\": \"{{ $('Extract Input').item.json.firstName }}\",\n  \"lastName\": \"{{ $('Extract Input').item.json.lastName }}\",\n  \"email\": \"{{ $('Extract Input').item.json.email }}\",\n  \"phone\": \"{{ $('Extract Input').item.json.phone }}\"\n}"
       },
       "id": "ghl-create",
       "name": "Create GHL Contact",
@@ -317,7 +271,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Gather results from all branches\nconst input = $('Extract Input').first().json;\n\n// Lightspeed result\nlet lightspeed_customer_id = null;\nlet found_in_ls = false;\n\ntry {\n  const lsSearch = $('Search Lightspeed Customer').first().json;\n  if (lsSearch.data && lsSearch.data.length > 0) {\n    // Verify email matches to avoid picking up generic WALKIN customer\n    const match = lsSearch.data.find(c => c.email && c.email.toLowerCase() === input.email.toLowerCase());\n    if (match) {\n      lightspeed_customer_id = match.id;\n      found_in_ls = true;\n    }\n  }\n} catch (e) {}\n\nif (!found_in_ls) {\n  try {\n    const lsCreate = $('Create LS Customer').first().json;\n    if (lsCreate.data && lsCreate.data.id) {\n      lightspeed_customer_id = lsCreate.data.id;\n    } else if (lsCreate.id) {\n      lightspeed_customer_id = lsCreate.id;\n    }\n  } catch (e) {}\n}\n\n// GHL result\nlet ghl_contact_id = null;\nlet found_in_ghl = false;\n\ntry {\n  const ghlSearch = $('Search GHL Contact').first().json;\n  if (ghlSearch.contacts && ghlSearch.contacts.length > 0) {\n    ghl_contact_id = ghlSearch.contacts[0].id;\n    found_in_ghl = true;\n  }\n} catch (e) {}\n\nif (!found_in_ghl) {\n  try {\n    const ghlCreate = $('Create GHL Contact').first().json;\n    if (ghlCreate.contact && ghlCreate.contact.id) {\n      ghl_contact_id = ghlCreate.contact.id;\n    }\n  } catch (e) {}\n}\n\nreturn [{\n  json: {\n    ghl_contact_id,\n    lightspeed_customer_id,\n    found_in_ghl,\n    found_in_ls,\n    email: input.email\n  }\n}];"
+        "jsCode": "// Gather results from all branches\nconst input = $('Extract Input').first().json;\n\n// Lightspeed result\nlet lightspeed_customer_id = null;\nlet found_in_ls = false;\n\ntry {\n  const lsSearch = $('Search Lightspeed Customer').first().json;\n  if (lsSearch.data && lsSearch.data.length > 0) {\n    lightspeed_customer_id = lsSearch.data[0].id;\n    found_in_ls = true;\n  }\n} catch (e) {}\n\nif (!found_in_ls) {\n  try {\n    const lsCreate = $('Create LS Customer').first().json;\n    if (lsCreate.data && lsCreate.data.id) {\n      lightspeed_customer_id = lsCreate.data.id;\n    } else if (lsCreate.id) {\n      lightspeed_customer_id = lsCreate.id;\n    }\n  } catch (e) {}\n}\n\n// GHL result\nlet ghl_contact_id = null;\nlet found_in_ghl = false;\n\ntry {\n  const ghlSearch = $('Search GHL Contact').first().json;\n  if (ghlSearch.contacts && ghlSearch.contacts.length > 0) {\n    ghl_contact_id = ghlSearch.contacts[0].id;\n    found_in_ghl = true;\n  }\n} catch (e) {}\n\nif (!found_in_ghl) {\n  try {\n    const ghlCreate = $('Create GHL Contact').first().json;\n    if (ghlCreate.contact && ghlCreate.contact.id) {\n      ghl_contact_id = ghlCreate.contact.id;\n    }\n  } catch (e) {}\n}\n\nreturn [{\n  json: {\n    ghl_contact_id,\n    lightspeed_customer_id,\n    found_in_ghl,\n    found_in_ls,\n    email: input.email\n  }\n}];"
       },
       "id": "build-result",
       "name": "Build Result",
