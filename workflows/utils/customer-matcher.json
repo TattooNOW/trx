@@ -109,7 +109,7 @@
           ]
         },
         "specifyBody": "json",
-        "jsonBody": "={\n  \"locationId\": \"n3G3ccCrPjsSH9bGlfIQ\",\n  \"query\": \"{{ $('Extract Input').item.json.email }}\"\n}"
+        "jsonBody": "={\n  \"locationId\": \"n3G3ccCrPjsSH9bGlfIQ\",\n  \"query\": \"{{ $('Extract Input').item.json.email }}\",\n  \"pageLimit\": 1\n}"
       },
       "id": "ghl-search",
       "name": "Search GHL Contact",

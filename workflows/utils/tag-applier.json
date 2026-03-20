@@ -1,5 +1,5 @@
 {
-  "name": "Util \u2014 Tag Applier",
+  "name": "Util — Tag Applier",
   "nodes": [
     {
       "parameters": {},
@@ -19,12 +19,10 @@
             {
               "name": "contactId",
               "value": "={{ $json.contactId }}"
-            }
-          ],
-          "object": [
+            },
             {
-              "name": "tags",
-              "value": "={{ $json.tags }}"
+              "name": "tagsJson",
+              "value": "={{ typeof $json.tags === 'string' ? $json.tags : JSON.stringify($json.tags) }}"
             }
           ]
         },
@@ -46,8 +44,6 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ \"tags\": {{ JSON.stringify($json.tags) }} }",
         "options": {
           "response": {
             "response": {
@@ -64,7 +60,9 @@
               "value": "2021-07-28"
             }
           ]
-        }
+        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"tags\": {{ $json.tagsJson }}\n}"
       },
       "id": "apply-tags",
       "name": "Apply Tags to GHL Contact",
@@ -100,7 +98,7 @@
             },
             {
               "name": "appliedTags",
-              "value": "={{ JSON.stringify($('Extract Input').item.json.tags) }}"
+              "value": "={{ $('Extract Input').item.json.tagsJson }}"
             }
           ]
         },
