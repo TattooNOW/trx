@@ -133,7 +133,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Find the matching store credit by notes field\nconst credits = $json.data || [];\nconst appointmentData = $('Validate & Extract').first().json;\n\n// Look for the deposit matching the appointment date / artist\nconst matchingCredit = credits.find(c => {\n  if (c.type !== 'ISSUE') return false;\n  const notes = (c.notes || '').toLowerCase();\n  // Match on appointment date or artist name\n  const dateMatch = appointmentData.appointmentDate && notes.includes(appointmentData.appointmentDate.split('T')[0]);\n  const artistMatch = appointmentData.artistName && notes.includes(appointmentData.artistName.toLowerCase());\n  return dateMatch || artistMatch;\n});\n\nif (!matchingCredit) {\n  // No matching credit found — still proceed but flag it\n  return [{\n    json: {\n      ...appointmentData,\n      creditFound: false,\n      creditId: null,\n      creditAmount: appointmentData.depositAmount,\n      customerId: $('Find LS Customer').first().json.data[0].id\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...appointmentData,\n    creditFound: true,\n    creditId: matchingCredit.id,\n    creditAmount: parseFloat(matchingCredit.amount),\n    customerId: $('Find LS Customer').first().json.data[0].id\n  }\n}];"
+        "jsCode": "// Find the matching store credit by notes field\nconst credits = $json.store_credit_transactions || $json.data || [];\nconst appointmentData = $('Validate & Extract').first().json;\n\n// Look for the deposit matching the appointment date / artist\nconst matchingCredit = credits.find(c => {\n  if (c.type !== 'ISSUE') return false;\n  const notes = (c.notes || '').toLowerCase();\n  // Match on appointment date or artist name\n  const dateMatch = appointmentData.appointmentDate && notes.includes(appointmentData.appointmentDate.split('T')[0]);\n  const artistMatch = appointmentData.artistName && notes.includes(appointmentData.artistName.toLowerCase());\n  return dateMatch || artistMatch;\n});\n\nif (!matchingCredit) {\n  // No matching credit found — still proceed but flag it\n  return [{\n    json: {\n      ...appointmentData,\n      creditFound: false,\n      creditId: null,\n      creditAmount: appointmentData.depositAmount,\n      customerId: $('Find LS Customer').first().json.data[0].id\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...appointmentData,\n    creditFound: true,\n    creditId: matchingCredit.id,\n    creditAmount: parseFloat(matchingCredit.amount),\n    customerId: $('Find LS Customer').first().json.data[0].id\n  }\n}];"
       },
       "id": "find-matching-credit",
       "name": "Find Matching Credit",
@@ -184,7 +184,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"store_credit_customer_id\": \"{{ $json.customerId }}\",\n  \"amount\": -{{ $json.creditAmount }},\n  \"type\": \"REDEMPTION\",\n  \"notes\": \"Refund — cancelled {{ $json.hoursDiff }}hrs before appointment ({{ $json.appointmentType }})\",\n  \"user_id\": \"0ac54c19-8c55-11ed-f913-3dd92e9d5935\",\n  \"client_id\": \"refund-{{ $json.appointmentDate }}-{{ Date.now() }}\"\n}",
+        "jsonBody": "={\n  \"store_credit_customer_id\": \"{{ $json.customerId }}\",\n  \"amount\": {{ $json.creditAmount * -1 }},\n  \"type\": \"REDEMPTION\",\n  \"notes\": \"Refund - cancelled {{ $json.hoursDiff }}hrs before appointment ({{ $json.appointmentType || 'Appointment' }})\",\n  \"user_id\": \"0ac54c19-8c55-11ed-f913-3dd92e9d5935\",\n  \"client_id\": \"refund-{{ Date.now() }}\"\n}",
         "options": {}
       },
       "id": "reverse-refund",
@@ -204,7 +204,7 @@
       "continueOnFail": true,
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 3000
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -232,7 +232,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"store_credit_customer_id\": \"{{ $json.customerId }}\",\n  \"amount\": -{{ $json.creditAmount }},\n  \"type\": \"REDEMPTION\",\n  \"notes\": \"Deposit forfeited — {{ $json.isNoShow ? 'no-show' : 'late cancel (<48hrs)' }} — {{ $json.appointmentType }} on {{ $json.appointmentDate }}\",\n  \"user_id\": \"0ac54c19-8c55-11ed-f913-3dd92e9d5935\",\n  \"client_id\": \"forfeit-{{ $json.appointmentDate }}-{{ Date.now() }}\"\n}",
+        "jsonBody": "={\n  \"store_credit_customer_id\": \"{{ $json.customerId }}\",\n  \"amount\": {{ $json.creditAmount * -1 }},\n  \"type\": \"REDEMPTION\",\n  \"notes\": \"Deposit forfeited - {{ $json.isNoShow ? 'no-show' : 'late cancel (<48hrs)' }} - {{ $json.appointmentType || 'Appointment' }} on {{ $json.appointmentDate || '' }}\",\n  \"user_id\": \"0ac54c19-8c55-11ed-f913-3dd92e9d5935\",\n  \"client_id\": \"forfeit-{{ Date.now() }}\"\n}",
         "options": {}
       },
       "id": "reverse-forfeit",
@@ -252,7 +252,7 @@
       "continueOnFail": true,
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 3000
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
