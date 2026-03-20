@@ -2,11 +2,13 @@
   "name": "Util — Tag Applier",
   "nodes": [
     {
-      "parameters": {},
+      "parameters": {
+        "inputSource": "passthrough"
+      },
       "id": "trigger",
       "name": "Sub-Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [
         0,
         0
@@ -14,24 +16,12 @@
     },
     {
       "parameters": {
-        "values": {
-          "string": [
-            {
-              "name": "contactId",
-              "value": "={{ $json.contactId }}"
-            },
-            {
-              "name": "tagsJson",
-              "value": "={{ typeof $json.tags === 'string' ? $json.tags : JSON.stringify($json.tags) }}"
-            }
-          ]
-        },
-        "options": {}
+        "jsCode": "const item = $input.first().json;\n\nconst contactId = item.contactId || '';\nif (!contactId) {\n  throw new Error('Tag Applier: missing contactId — received: ' + JSON.stringify(Object.keys(item)));\n}\n\n// Tags: accept array or JSON string\nlet tags = item.tags || [];\nif (typeof tags === 'string') {\n  try { tags = JSON.parse(tags); } catch (e) { tags = [tags]; }\n}\n\n// Custom fields: array of { key, field_value }\nconst customFields = item.customFields || [];\n\n// Note: optional string\nconst note = item.note || '';\n\nreturn [{ json: {\n  contactId,\n  tags,\n  hasTags: tags.length > 0,\n  customFields,\n  hasCustomFields: customFields.length > 0,\n  note,\n  hasNote: note.length > 0\n} }];"
       },
       "id": "extract-input",
       "name": "Extract Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         220,
         0
@@ -39,11 +29,45 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-tags",
+              "leftValue": "={{ $json.hasTags }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-tags",
+      "name": "Has Tags?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.contactId }}/tags",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $('Extract Input').first().json.contactId }}/tags",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ tags: $('Extract Input').first().json.tags }) }}",
         "options": {
           "response": {
             "response": {
@@ -60,17 +84,15 @@
               "value": "2021-07-28"
             }
           ]
-        },
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"tags\": {{ $json.tagsJson }}\n}"
+        }
       },
       "id": "apply-tags",
       "name": "Apply Tags to GHL Contact",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        440,
-        0
+        660,
+        -60
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -78,38 +100,200 @@
           "name": "GHL TRX"
         }
       },
+      "continueOnFail": true,
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "values": {
-          "boolean": [
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "name": "success",
-              "value": "={{ !$json.error }}"
+              "id": "has-fields",
+              "leftValue": "={{ $('Extract Input').first().json.hasCustomFields }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
           ],
-          "string": [
-            {
-              "name": "contactId",
-              "value": "={{ $('Extract Input').item.json.contactId }}"
-            },
-            {
-              "name": "appliedTags",
-              "value": "={{ $('Extract Input').item.json.tagsJson }}"
-            }
-          ]
+          "combinator": "and"
         },
         "options": {}
       },
+      "id": "check-fields",
+      "name": "Has Custom Fields?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $('Extract Input').first().json.contactId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ customFields: $('Extract Input').first().json.customFields }) }}",
+        "options": {
+          "timeout": 10000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        }
+      },
+      "id": "update-fields",
+      "name": "Update Custom Fields",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
+        }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-note",
+              "leftValue": "={{ $('Extract Input').first().json.hasNote }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-note",
+      "name": "Has Note?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1320,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $('Extract Input').first().json.contactId }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ body: $('Extract Input').first().json.note }) }}",
+        "options": {
+          "timeout": 10000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        }
+      },
+      "id": "add-note",
+      "name": "Add Note",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
+        }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Extract Input').first().json;\nreturn [{ json: {\n  success: true,\n  contactId: input.contactId,\n  appliedTags: input.tags,\n  updatedFields: input.customFields.length,\n  addedNote: input.hasNote\n} }];"
+      },
       "id": "build-result",
       "name": "Build Result",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "skip-tags",
+      "name": "No Tags",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
       "position": [
         660,
+        60
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "skip-fields",
+      "name": "No Fields",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "skip-note",
+      "name": "No Note",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1540,
         0
       ]
     }
@@ -130,7 +314,25 @@
       "main": [
         [
           {
+            "node": "Has Tags?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Tags?": {
+      "main": [
+        [
+          {
             "node": "Apply Tags to GHL Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Tags",
             "type": "main",
             "index": 0
           }
@@ -138,6 +340,97 @@
       ]
     },
     "Apply Tags to GHL Contact": {
+      "main": [
+        [
+          {
+            "node": "Has Custom Fields?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Tags": {
+      "main": [
+        [
+          {
+            "node": "Has Custom Fields?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Custom Fields?": {
+      "main": [
+        [
+          {
+            "node": "Update Custom Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Custom Fields": {
+      "main": [
+        [
+          {
+            "node": "Has Note?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Fields": {
+      "main": [
+        [
+          {
+            "node": "Has Note?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Note?": {
+      "main": [
+        [
+          {
+            "node": "Add Note",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Note": {
+      "main": [
+        [
+          {
+            "node": "Build Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Note": {
       "main": [
         [
           {

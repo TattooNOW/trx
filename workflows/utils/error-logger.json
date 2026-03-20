@@ -14,36 +14,12 @@
     },
     {
       "parameters": {
-        "values": {
-          "string": [
-            {
-              "name": "workflowName",
-              "value": "={{ $json.workflowName }}"
-            },
-            {
-              "name": "errorMessage",
-              "value": "={{ $json.errorMessage }}"
-            },
-            {
-              "name": "payload",
-              "value": "={{ JSON.stringify($json.payload || {}) }}"
-            },
-            {
-              "name": "timestamp",
-              "value": "={{ new Date().toISOString() }}"
-            },
-            {
-              "name": "severity",
-              "value": "={{ $json.severity || 'error' }}"
-            }
-          ]
-        },
-        "options": {}
+        "jsCode": "const item = $input.first().json;\nreturn [{ json: {\n  workflowName: item.workflowName || 'Unknown',\n  errorMessage: item.errorMessage || 'No message',\n  payload: JSON.stringify(item.payload || {}),\n  timestamp: new Date().toISOString(),\n  severity: item.severity || 'error'\n} }];"
       },
       "id": "format-error",
       "name": "Format Error",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         220,
         0
@@ -69,20 +45,12 @@
     },
     {
       "parameters": {
-        "values": {
-          "boolean": [
-            {
-              "name": "logged",
-              "value": true
-            }
-          ]
-        },
-        "options": {}
+        "jsCode": "return [{ json: { logged: true } }];"
       },
       "id": "confirm",
       "name": "Confirm Logged",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         660,
         0
