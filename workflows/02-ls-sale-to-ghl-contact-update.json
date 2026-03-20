@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Verify Lightspeed webhook payload structure\n// Note: HMAC-SHA256 verification requires crypto module which is sandboxed in n8n.\n// Security is maintained via unique webhook URL path + payload validation.\nconst headers = $input.first().json.headers || {};\nconst body = $input.first().json.body;\n\nconst signature = headers['x-signature'] || headers['X-Signature'];\nif (!signature) {\n  throw new Error('Missing x-signature header — webhook rejected');\n}\n\nconst payload = typeof body === 'string' ? JSON.parse(body) : body;\n\n// Validate required payload structure\nif (!payload || !payload.payload) {\n  throw new Error('Invalid webhook payload structure');\n}\n\nreturn [{ json: { verified: true, payload: payload.payload || payload } }];"
+        "jsCode": "// Verify Lightspeed webhook signature header is present\n// Full HMAC-SHA256 verification requires crypto module (sandboxed in n8n)\n// Security: unique webhook URL path + signature presence check\nconst headers = $input.first().json.headers || {};\nconst body = $input.first().json.body;\n\nconst signature = headers['x-signature'] || headers['X-Signature'];\nif (!signature) {\n  throw new Error('Missing x-signature header — webhook rejected');\n}\n\nconst payload = typeof body === 'string' ? JSON.parse(body) : body;\n\n// LS X-Series webhook format: { domain_prefix, type, payload: { ...sale... } }\nif (!payload || !payload.payload) {\n  throw new Error('Invalid webhook payload structure — expected payload.payload');\n}\n\nreturn [{ json: { verified: true, payload: payload.payload } }];"
       },
       "id": "verify-signature",
       "name": "Verify HMAC Signature",
@@ -65,19 +65,6 @@
       ]
     },
     {
-      "parameters": {
-        "jsCode": "// Extract sale data and determine tags from line item categories\nconst sale = $json.payload;\n\nconst customerEmail = sale.customer_email || (sale.customer && sale.customer.email) || '';\nconst customerFirstName = sale.customer_first_name || (sale.customer && sale.customer.first_name) || '';\nconst customerLastName = sale.customer_last_name || (sale.customer && sale.customer.last_name) || '';\nconst customerPhone = sale.customer_phone || (sale.customer && sale.customer.phone) || '';\nconst saleId = sale.id || sale.sale_id;\nconst saleTotal = parseFloat(sale.total_inc_tax || sale.total || 0);\nconst employeeId = sale.user_id || sale.employee_id || '';\nconst registerId = sale.register_id || '';\nconst saleDate = sale.sale_date || sale.completed_at || new Date().toISOString().split('T')[0];\n\n// Category → tag mapping (actual Lightspeed X-Series category names)\nconst categoryTagMap = {\n  'tattoo artist': '[client] tattoo',\n  'microblader': '[client] tattoo',\n  'piercing': '[client] piercing',\n  'piercer': '[client] piercing',\n  'tooth gem': '[client] piercing'\n};\n\nconst tags = new Set(['[system] lightspeed-customer']);\nconst lineItems = sale.line_items || sale.register_sale_products || [];\n\nfor (const item of lineItems) {\n  const categoryName = (item.product_type_name || item.category_name || item.type || '').toLowerCase().trim();\n  for (const [key, tag] of Object.entries(categoryTagMap)) {\n    if (categoryName.includes(key)) {\n      tags.add(tag);\n    }\n  }\n}\n\nif (!customerEmail) {\n  throw new Error(`Sale ${saleId} has no customer email — cannot sync to GHL`);\n}\n\nreturn [{\n  json: {\n    customerEmail,\n    customerFirstName,\n    customerLastName,\n    customerPhone,\n    saleId: String(saleId),\n    saleTotal,\n    saleDate,\n    employeeId: String(employeeId),\n    registerId: String(registerId),\n    tags: Array.from(tags),\n    hasTattoo: tags.has('[client] tattoo'),\n    hasPiercing: tags.has('[client] piercing')\n  }\n}];"
-      },
-      "id": "extract-sale-data",
-      "name": "Extract Sale Data + Tags",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        660,
-        -60
-      ]
-    },
-    {
       "parameters": {},
       "id": "skip-non-closed",
       "name": "Skip Non-Closed",
@@ -86,6 +73,46 @@
       "position": [
         660,
         120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://trxtattoospiercings.retail.lightspeed.app/api/2.0/customers/{{ $json.payload.customer_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "fetch-customer",
+      "name": "Fetch Customer from LS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        -60
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
+        }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract sale data from webhook payload + customer data from LS API\nconst sale = $('Verify HMAC Signature').first().json.payload;\nconst customerData = $json.data || $json;\n\n// Customer details from LS API response\nconst customerEmail = customerData.email || '';\nconst customerFirstName = customerData.first_name || '';\nconst customerLastName = customerData.last_name || '';\nconst customerPhone = customerData.phone || customerData.mobile || '';\n\nconst saleId = sale.id || sale.sale_id;\nconst saleTotal = parseFloat(sale.total_price_incl || sale.total_inc_tax || sale.total || 0);\nconst employeeId = sale.user_id || sale.employee_id || '';\nconst registerId = sale.register_id || '';\nconst saleDate = sale.sale_date || sale.completed_at || new Date().toISOString().split('T')[0];\n\n// Category → tag mapping\n// LS X-Series webhook register_sale_products include 'name' (product name)\n// We match on product name keywords since product_type_name isn't in the webhook payload\nconst nameTagRules = [\n  { pattern: /tattoo/i, tag: '[client] tattoo' },\n  { pattern: /microbla/i, tag: '[client] tattoo' },\n  { pattern: /pierc/i, tag: '[client] piercing' },\n  { pattern: /tooth\\s*gem/i, tag: '[client] piercing' }\n];\n\n// Also check product_type_name if available (e.g., from enriched payloads)\nconst categoryTagMap = {\n  'tattoo artist': '[client] tattoo',\n  'microblader': '[client] tattoo',\n  'piercing': '[client] piercing',\n  'piercer': '[client] piercing',\n  'tooth gem': '[client] piercing'\n};\n\nconst tags = new Set(['[system] lightspeed-customer']);\nconst lineItems = sale.register_sale_products || sale.line_items || [];\n\nfor (const item of lineItems) {\n  const productName = (item.name || '').toLowerCase().trim();\n  const typeName = (item.product_type_name || item.category_name || item.type || '').toLowerCase().trim();\n\n  // Check product_type_name first (if available)\n  for (const [key, tag] of Object.entries(categoryTagMap)) {\n    if (typeName.includes(key)) {\n      tags.add(tag);\n    }\n  }\n\n  // Then check product name keywords\n  for (const rule of nameTagRules) {\n    if (rule.pattern.test(productName)) {\n      tags.add(rule.tag);\n    }\n  }\n}\n\nif (!customerEmail) {\n  throw new Error(`Sale ${saleId}: customer ${sale.customer_id} has no email in Lightspeed — cannot sync to GHL`);\n}\n\nreturn [{\n  json: {\n    customerEmail,\n    customerFirstName,\n    customerLastName,\n    customerPhone,\n    saleId: String(saleId),\n    saleTotal,\n    saleDate,\n    employeeId: String(employeeId),\n    registerId: String(registerId),\n    tags: Array.from(tags),\n    hasTattoo: tags.has('[client] tattoo'),\n    hasPiercing: tags.has('[client] piercing')\n  }\n}];"
+      },
+      "id": "extract-sale-data",
+      "name": "Extract Sale Data + Tags",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -60
       ]
     },
     {
@@ -122,7 +149,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
       "position": [
-        880,
+        1100,
         -60
       ]
     },
@@ -148,7 +175,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1100,
+        1320,
         -60
       ],
       "credentials": {
@@ -164,14 +191,14 @@
     },
     {
       "parameters": {
-        "jsCode": "// Calculate updated lifetime value and prepare custom field update\nconst contact = $json.contact || {};\nconst saleData = $('Extract Sale Data + Tags').first().json;\nconst matcherData = $('Find/Create Customer').first().json;\n\n// Get existing lifetime value from custom fields\nlet existingLifetime = 0;\nconst customFields = contact.customFields || contact.customField || [];\nif (Array.isArray(customFields)) {\n  const lvField = customFields.find(f => f.key === 'lifetime_value' || f.id === 'lifetime_value');\n  if (lvField) {\n    existingLifetime = parseFloat(lvField.value || lvField.field_value || 0);\n  }\n}\n\nconst newLifetime = existingLifetime + saleData.saleTotal;\nconst tags = [...saleData.tags];\nif (newLifetime >= 500) tags.push('[system] vip');\n\nreturn [{\n  json: {\n    ghl_contact_id: matcherData.ghl_contact_id,\n    saleTotal: saleData.saleTotal,\n    saleDate: saleData.saleDate,\n    saleId: saleData.saleId,\n    employeeId: saleData.employeeId,\n    newLifetime,\n    tags\n  }\n}];"
+        "jsCode": "// Calculate updated lifetime value and prepare custom field update\nconst contact = $json.contact || {};\nconst saleData = $('Extract Sale Data + Tags').first().json;\nconst matcherData = $('Find/Create Customer').first().json;\n\n// Get existing lifetime value from custom fields\nlet existingLifetime = 0;\nconst customFields = contact.customFields || contact.customField || [];\nif (Array.isArray(customFields)) {\n  const lvField = customFields.find(f =>\n    f.key === 'lifetime_value' || f.id === 'lifetime_value'\n  );\n  if (lvField) {\n    existingLifetime = parseFloat(lvField.value || lvField.field_value || 0);\n  }\n}\n\nconst newLifetime = existingLifetime + saleData.saleTotal;\nconst tags = [...saleData.tags];\nif (newLifetime >= 500) tags.push('[system] vip');\n\nreturn [{\n  json: {\n    ghl_contact_id: matcherData.ghl_contact_id,\n    saleTotal: saleData.saleTotal,\n    saleDate: saleData.saleDate,\n    saleId: saleData.saleId,\n    employeeId: saleData.employeeId,\n    newLifetime,\n    tags\n  }\n}];"
       },
       "id": "calc-lifetime",
       "name": "Calculate Lifetime Value",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1320,
+        1540,
         -60
       ]
     },
@@ -200,7 +227,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1540,
+        1760,
         -120
       ],
       "credentials": {
@@ -239,7 +266,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1540,
+        1760,
         0
       ],
       "credentials": {
@@ -281,7 +308,7 @@
       "main": [
         [
           {
-            "node": "Extract Sale Data + Tags",
+            "node": "Fetch Customer from LS",
             "type": "main",
             "index": 0
           }
@@ -289,6 +316,17 @@
         [
           {
             "node": "Skip Non-Closed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Customer from LS": {
+      "main": [
+        [
+          {
+            "node": "Extract Sale Data + Tags",
             "type": "main",
             "index": 0
           }
