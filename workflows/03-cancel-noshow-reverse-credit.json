@@ -1,5 +1,5 @@
 {
-  "name": "WF3 \u2014 Cancel/No-Show \u2192 Reverse Store Credit",
+  "name": "WF3 — Cancel/No-Show → Reverse Store Credit",
   "nodes": [
     {
       "parameters": {
@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Extract and validate appointment cancellation/no-show data\nconst body = $json.body || $json;\n\nconst contactId = body.contact_id || body.contactId;\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst appointmentDate = body.startTime || body.appointment_date || body.selectedTimeslot;\nconst cancellationTimestamp = body.dateUpdated || body.updatedAt || new Date().toISOString();\nconst status = (body.status || body.appointmentStatus || '').toLowerCase();\nconst depositAmount = parseFloat(body.deposit_amount || body.customFields?.deposit_amount || 0);\nconst artistName = body.calendarName || body.artist_name || '';\nconst appointmentType = body.title || body.appointment_type || 'Appointment';\nconst calendarName = (body.calendarName || body.calendar_name || '').toLowerCase();\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in appointment webhook');\n}\n\nif (status !== 'cancelled' && status !== 'no_show' && status !== 'no-show' && status !== 'noshow') {\n  // Not a cancellation or no-show \u2014 skip\n  return [];\n}\n\n// Determine service type from calendar name\nconst serviceType = calendarName.includes('piercing') ? 'piercing' : 'tattoo';\n\n// Calculate hours between cancellation and appointment\nconst appointmentTime = new Date(appointmentDate).getTime();\nconst cancelTime = new Date(cancellationTimestamp).getTime();\nconst hoursDiff = (appointmentTime - cancelTime) / (1000 * 60 * 60);\nconst isNoShow = status === 'no_show' || status === 'no-show' || status === 'noshow';\nconst isLateCancel = !isNoShow && hoursDiff < 48;\nconst isFullRefund = !isNoShow && hoursDiff >= 48;\n\n// Build tag: [client] tattoo: no-show OR [client] piercing: late-cancel etc.\nconst tagAction = isNoShow ? 'no-show' : 'late-cancel';\nconst tag = `[client] ${serviceType}: ${tagAction}`;\n\nreturn [{\n  json: {\n    contactId,\n    contactEmail,\n    appointmentDate,\n    cancellationTimestamp,\n    status,\n    depositAmount,\n    artistName,\n    appointmentType,\n    serviceType,\n    hoursDiff: Math.round(hoursDiff * 10) / 10,\n    isNoShow,\n    isLateCancel,\n    isFullRefund,\n    path: isFullRefund ? 'refund' : 'forfeit',\n    tag\n  }\n}];"
+        "jsCode": "// Extract and validate appointment cancellation/no-show data\nconst body = $json.body || $json;\n\nconst contactId = body.contact_id || body.contactId;\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst appointmentDate = body.startTime || body.appointment_date || body.selectedTimeslot;\nconst cancellationTimestamp = body.dateUpdated || body.updatedAt || new Date().toISOString();\nconst status = (body.status || body.appointmentStatus || '').toLowerCase();\nconst depositAmount = parseFloat(body.deposit_amount || body.customFields?.deposit_amount || 0);\nconst artistName = body.calendarName || body.artist_name || '';\nconst appointmentType = body.title || body.appointment_type || 'Appointment';\nconst calendarName = (body.calendarName || body.calendar_name || '').toLowerCase();\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in appointment webhook');\n}\n\nif (status !== 'cancelled' && status !== 'no_show' && status !== 'no-show' && status !== 'noshow') {\n  // Not a cancellation or no-show — skip\n  return [];\n}\n\n// Determine service type from calendar name\nconst serviceType = calendarName.includes('piercing') ? 'piercing' : 'tattoo';\n\n// Calculate hours between cancellation and appointment\nconst appointmentTime = new Date(appointmentDate).getTime();\nconst cancelTime = new Date(cancellationTimestamp).getTime();\nconst hoursDiff = (appointmentTime - cancelTime) / (1000 * 60 * 60);\nconst isNoShow = status === 'no_show' || status === 'no-show' || status === 'noshow';\nconst isLateCancel = !isNoShow && hoursDiff < 48;\nconst isFullRefund = !isNoShow && hoursDiff >= 48;\n\n// Build tag: [client] tattoo: no-show OR [client] piercing: late-cancel etc.\nconst tagAction = isNoShow ? 'no-show' : 'late-cancel';\nconst tag = `[client] ${serviceType}: ${tagAction}`;\n\nreturn [{\n  json: {\n    contactId,\n    contactEmail,\n    appointmentDate,\n    cancellationTimestamp,\n    status,\n    depositAmount,\n    artistName,\n    appointmentType,\n    serviceType,\n    hoursDiff: Math.round(hoursDiff * 10) / 10,\n    isNoShow,\n    isLateCancel,\n    isFullRefund,\n    path: isFullRefund ? 'refund' : 'forfeit',\n    tag\n  }\n}];"
       },
       "id": "validate-extract",
       "name": "Validate & Extract",
@@ -35,7 +35,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.LS_BASE_URL }}/api/2.0/customers",
+        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/customers",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendQuery": true,
@@ -103,7 +103,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.LS_BASE_URL }}/api/2.0/store_credits",
+        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendQuery": true,
@@ -138,7 +138,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Find the matching store credit by notes field\nconst credits = $json.data || [];\nconst appointmentData = $('Validate & Extract').first().json;\n\n// Look for the deposit matching the appointment date / artist\nconst matchingCredit = credits.find(c => {\n  if (c.type !== 'ISSUE') return false;\n  const notes = (c.notes || '').toLowerCase();\n  // Match on appointment date or artist name\n  const dateMatch = appointmentData.appointmentDate && notes.includes(appointmentData.appointmentDate.split('T')[0]);\n  const artistMatch = appointmentData.artistName && notes.includes(appointmentData.artistName.toLowerCase());\n  return dateMatch || artistMatch;\n});\n\nif (!matchingCredit) {\n  // No matching credit found \u2014 still proceed but flag it\n  return [{\n    json: {\n      ...appointmentData,\n      creditFound: false,\n      creditId: null,\n      creditAmount: appointmentData.depositAmount,\n      customerId: $('Find LS Customer').first().json.data[0].id\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...appointmentData,\n    creditFound: true,\n    creditId: matchingCredit.id,\n    creditAmount: parseFloat(matchingCredit.amount),\n    customerId: $('Find LS Customer').first().json.data[0].id\n  }\n}];"
+        "jsCode": "// Find the matching store credit by notes field\nconst credits = $json.data || [];\nconst appointmentData = $('Validate & Extract').first().json;\n\n// Look for the deposit matching the appointment date / artist\nconst matchingCredit = credits.find(c => {\n  if (c.type !== 'ISSUE') return false;\n  const notes = (c.notes || '').toLowerCase();\n  // Match on appointment date or artist name\n  const dateMatch = appointmentData.appointmentDate && notes.includes(appointmentData.appointmentDate.split('T')[0]);\n  const artistMatch = appointmentData.artistName && notes.includes(appointmentData.artistName.toLowerCase());\n  return dateMatch || artistMatch;\n});\n\nif (!matchingCredit) {\n  // No matching credit found — still proceed but flag it\n  return [{\n    json: {\n      ...appointmentData,\n      creditFound: false,\n      creditId: null,\n      creditAmount: appointmentData.depositAmount,\n      customerId: $('Find LS Customer').first().json.data[0].id\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...appointmentData,\n    creditFound: true,\n    creditId: matchingCredit.id,\n    creditAmount: parseFloat(matchingCredit.amount),\n    customerId: $('Find LS Customer').first().json.data[0].id\n  }\n}];"
       },
       "id": "find-matching-credit",
       "name": "Find Matching Credit",
@@ -184,12 +184,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.LS_BASE_URL }}/api/2.0/store_credits",
+        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"customer_id\": \"{{ $json.customerId }}\",\n  \"type\": \"REVERSE\",\n  \"amount\": {{ $json.creditAmount }},\n  \"notes\": \"Refund \u2014 cancelled {{ $json.hoursDiff }}hrs before appointment ({{ $json.appointmentType }})\"\n}",
+        "jsonBody": "={\n  \"customer_id\": \"{{ $json.customerId }}\",\n  \"type\": \"REVERSE\",\n  \"amount\": {{ $json.creditAmount }},\n  \"notes\": \"Refund — cancelled {{ $json.hoursDiff }}hrs before appointment ({{ $json.appointmentType }})\"\n}",
         "options": {}
       },
       "id": "reverse-refund",
@@ -213,9 +213,9 @@
     },
     {
       "parameters": {
-        "fromEmail": "={{ $env.OPS_EMAIL }}",
-        "toEmail": "={{ $env.OPS_EMAIL }}",
-        "subject": "=TRX: Process Stripe Refund \u2014 {{ $('Validate & Extract').first().json.contactEmail }}",
+        "fromEmail": "={{ gabe@tattoonow.com }}",
+        "toEmail": "={{ gabe@tattoonow.com }}",
+        "subject": "=TRX: Process Stripe Refund — {{ $('Validate & Extract').first().json.contactEmail }}",
         "emailType": "text",
         "message": "=A deposit has been refunded in Lightspeed (cancelled {{ $('Validate & Extract').first().json.hoursDiff }}hrs before appointment).\n\nClient: {{ $('Validate & Extract').first().json.contactEmail }}\nAmount: ${{ $('Validate & Extract').first().json.creditAmount }}\nAppointment: {{ $('Validate & Extract').first().json.appointmentType }} on {{ $('Validate & Extract').first().json.appointmentDate }}\n\nACTION REQUIRED: Process the corresponding Stripe refund manually in GHL."
       },
@@ -232,12 +232,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.LS_BASE_URL }}/api/2.0/store_credits",
+        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"customer_id\": \"{{ $json.customerId }}\",\n  \"type\": \"REVERSE\",\n  \"amount\": {{ $json.creditAmount }},\n  \"notes\": \"Deposit forfeited \u2014 {{ $json.isNoShow ? 'no-show' : 'late cancel (<48hrs)' }} \u2014 {{ $json.appointmentType }} on {{ $json.appointmentDate }}\"\n}",
+        "jsonBody": "={\n  \"customer_id\": \"{{ $json.customerId }}\",\n  \"type\": \"REVERSE\",\n  \"amount\": {{ $json.creditAmount }},\n  \"notes\": \"Deposit forfeited — {{ $json.isNoShow ? 'no-show' : 'late cancel (<48hrs)' }} — {{ $json.appointmentType }} on {{ $json.appointmentDate }}\"\n}",
         "options": {}
       },
       "id": "reverse-forfeit",
@@ -261,7 +261,11 @@
     },
     {
       "parameters": {
-        "workflowId": "vQc7pV2wjDImrvks",
+        "workflowId": {
+          "__rl": true,
+          "value": "vQc7pV2wjDImrvks",
+          "mode": "id"
+        },
         "options": {},
         "workflowInputs": {
           "values": [
@@ -340,7 +344,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"body\": \"Deposit forfeited \u2014 {{ $('Validate & Extract').first().json.appointmentDate }} \u2014 {{ $('Validate & Extract').first().json.appointmentType }}\"\n}",
+        "jsonBody": "={\n  \"body\": \"Deposit forfeited — {{ $('Validate & Extract').first().json.appointmentDate }} — {{ $('Validate & Extract').first().json.appointmentType }}\"\n}",
         "options": {},
         "sendHeaders": true,
         "headerParameters": {
@@ -373,13 +377,17 @@
     },
     {
       "parameters": {
-        "workflowId": "NjQ4osMVHKK4l1Wa",
+        "workflowId": {
+          "__rl": true,
+          "value": "NjQ4osMVHKK4l1Wa",
+          "mode": "id"
+        },
         "options": {},
         "workflowInputs": {
           "values": [
             {
               "name": "workflowName",
-              "value": "WF3 \u2014 Cancel/No-Show \u2192 Reverse Credit"
+              "value": "WF3 — Cancel/No-Show → Reverse Credit"
             },
             {
               "name": "errorMessage",

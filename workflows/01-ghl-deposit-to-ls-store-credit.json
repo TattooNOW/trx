@@ -1,5 +1,5 @@
 {
-  "name": "WF1 \u2014 GHL Deposit \u2192 LS Store Credit",
+  "name": "WF1 — GHL Deposit → LS Store Credit",
   "nodes": [
     {
       "parameters": {
@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Validate required fields from GHL payment webhook\nconst body = $json.body;\n\nconst contactId = body.contact_id || body.contactId;\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst paymentAmount = body.amount || body.payment_amount;\nconst paymentId = body.payment_id || body.id || body.charge_id;\nconst artistName = body.artist_name || body.calendarName || '';\nconst appointmentDate = body.appointment_date || body.startTime || '';\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in payment webhook payload');\n}\nif (!paymentAmount || paymentAmount <= 0) {\n  throw new Error('Missing or invalid payment amount');\n}\nif (!paymentId) {\n  throw new Error('Missing payment ID \u2014 required for idempotency');\n}\n\nreturn [{\n  json: {\n    contactId,\n    contactEmail,\n    paymentAmount: parseFloat(paymentAmount),\n    paymentId: String(paymentId),\n    artistName,\n    appointmentDate,\n    rawPayload: body\n  }\n}];"
+        "jsCode": "// Validate required fields from GHL payment webhook\nconst body = $json.body;\n\nconst contactId = body.contact_id || body.contactId;\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst paymentAmount = body.amount || body.payment_amount;\nconst paymentId = body.payment_id || body.id || body.charge_id;\nconst artistName = body.artist_name || body.calendarName || '';\nconst appointmentDate = body.appointment_date || body.startTime || '';\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in payment webhook payload');\n}\nif (!paymentAmount || paymentAmount <= 0) {\n  throw new Error('Missing or invalid payment amount');\n}\nif (!paymentId) {\n  throw new Error('Missing payment ID — required for idempotency');\n}\n\nreturn [{\n  json: {\n    contactId,\n    contactEmail,\n    paymentAmount: parseFloat(paymentAmount),\n    paymentId: String(paymentId),\n    artistName,\n    appointmentDate,\n    rawPayload: body\n  }\n}];"
       },
       "id": "validate-payload",
       "name": "Validate Payload",
@@ -34,7 +34,11 @@
     },
     {
       "parameters": {
-        "workflowId": "vQc7pV2wjDImrvks",
+        "workflowId": {
+          "__rl": true,
+          "value": "vQc7pV2wjDImrvks",
+          "mode": "id"
+        },
         "options": {},
         "workflowInputs": {
           "values": [
@@ -101,12 +105,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.LS_BASE_URL }}/api/2.0/store_credits",
+        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"customer_id\": \"{{ $('Find/Create Customer').item.json.lightspeed_customer_id }}\",\n  \"type\": \"ISSUE\",\n  \"amount\": {{ $('Validate Payload').item.json.paymentAmount }},\n  \"notes\": \"Deposit via booking \u2014 {{ $('Validate Payload').item.json.artistName }} {{ $('Validate Payload').item.json.appointmentDate }}\",\n  \"client_id\": \"{{ $('Validate Payload').item.json.paymentId }}\"\n}",
+        "jsonBody": "={\n  \"customer_id\": \"{{ $('Find/Create Customer').item.json.lightspeed_customer_id }}\",\n  \"type\": \"ISSUE\",\n  \"amount\": {{ $('Validate Payload').item.json.paymentAmount }},\n  \"notes\": \"Deposit via booking — {{ $('Validate Payload').item.json.artistName }} {{ $('Validate Payload').item.json.appointmentDate }}\",\n  \"client_id\": \"{{ $('Validate Payload').item.json.paymentId }}\"\n}",
         "options": {
           "response": {
             "response": {
@@ -193,13 +197,17 @@
     },
     {
       "parameters": {
-        "workflowId": "NjQ4osMVHKK4l1Wa",
+        "workflowId": {
+          "__rl": true,
+          "value": "NjQ4osMVHKK4l1Wa",
+          "mode": "id"
+        },
         "options": {},
         "workflowInputs": {
           "values": [
             {
               "name": "workflowName",
-              "value": "WF1 \u2014 GHL Deposit \u2192 LS Store Credit"
+              "value": "WF1 — GHL Deposit → LS Store Credit"
             },
             {
               "name": "errorMessage",
@@ -227,13 +235,17 @@
     },
     {
       "parameters": {
-        "workflowId": "NjQ4osMVHKK4l1Wa",
+        "workflowId": {
+          "__rl": true,
+          "value": "NjQ4osMVHKK4l1Wa",
+          "mode": "id"
+        },
         "options": {},
         "workflowInputs": {
           "values": [
             {
               "name": "workflowName",
-              "value": "WF1 \u2014 GHL Deposit \u2192 LS Store Credit"
+              "value": "WF1 — GHL Deposit → LS Store Credit"
             },
             {
               "name": "errorMessage",

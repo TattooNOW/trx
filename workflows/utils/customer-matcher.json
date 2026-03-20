@@ -48,7 +48,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.LS_BASE_URL }}/api/2.0/customers",
+        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/customers",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendQuery": true,
@@ -98,7 +98,7 @@
           "parameters": [
             {
               "name": "locationId",
-              "value": "={{ $env.GHL_LOCATION_ID }}"
+              "value": "={{ n3G3ccCrPjsSH9bGlfIQ }}"
             },
             {
               "name": "query",
@@ -171,7 +171,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.LS_BASE_URL }}/api/2.0/customers",
+        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/customers",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -259,7 +259,7 @@
           "parameters": [
             {
               "name": "locationId",
-              "value": "={{ $env.GHL_LOCATION_ID }}"
+              "value": "={{ n3G3ccCrPjsSH9bGlfIQ }}"
             },
             {
               "name": "firstName",

@@ -1,5 +1,5 @@
 {
-  "name": "WF5 \u2014 Nightly Reconciliation",
+  "name": "WF5 — Nightly Reconciliation",
   "nodes": [
     {
       "parameters": {
@@ -37,7 +37,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.LS_BASE_URL }}/api/2.0/sales",
+        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/sales",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendQuery": true,
@@ -147,7 +147,7 @@
           "parameters": [
             {
               "name": "locationId",
-              "value": "={{ $env.GHL_LOCATION_ID }}"
+              "value": "={{ n3G3ccCrPjsSH9bGlfIQ }}"
             },
             {
               "name": "query",
@@ -232,7 +232,11 @@
     },
     {
       "parameters": {
-        "workflowId": "vQc7pV2wjDImrvks",
+        "workflowId": {
+          "__rl": true,
+          "value": "vQc7pV2wjDImrvks",
+          "mode": "id"
+        },
         "options": {},
         "workflowInputs": {
           "values": [
@@ -305,7 +309,11 @@
     },
     {
       "parameters": {
-        "workflowId": "GusZNVy2sSal5wpO",
+        "workflowId": {
+          "__rl": true,
+          "value": "GusZNVy2sSal5wpO",
+          "mode": "id"
+        },
         "options": {},
         "workflowInputs": {
           "values": [
@@ -353,8 +361,8 @@
     },
     {
       "parameters": {
-        "fromEmail": "={{ $env.OPS_EMAIL }}",
-        "toEmail": "={{ $env.OPS_EMAIL }}",
+        "fromEmail": "={{ gabe@tattoonow.com }}",
+        "toEmail": "={{ gabe@tattoonow.com }}",
         "subject": "TRX Nightly Reconciliation Summary",
         "emailType": "text",
         "message": "=Nightly reconciliation complete.\n\nCheck n8n execution log for details."

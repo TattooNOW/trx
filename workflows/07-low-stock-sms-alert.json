@@ -85,7 +85,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"conversationProviderId\": \"twilio\",\n  \"contactId\": \"{{ $env.ALERT_CONTACT_ID }}\",\n  \"message\": \"SOLD OUT: {{ $json.productName }}. SKU: {{ $json.sku }}\"\n}",
+        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"conversationProviderId\": \"twilio\",\n  \"contactId\": \"{{ TuxhN0tL15zliyV0jgYr }}\",\n  \"message\": \"SOLD OUT: {{ $json.productName }}. SKU: {{ $json.sku }}\"\n}",
         "options": {},
         "sendHeaders": true,
         "headerParameters": {
@@ -124,7 +124,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"conversationProviderId\": \"twilio\",\n  \"contactId\": \"{{ $env.ALERT_CONTACT_ID }}\",\n  \"message\": \"Low stock: {{ $json.productName }} at {{ $json.currentCount }} units (reorder: {{ $json.reorderPoint }}). SKU: {{ $json.sku }}\"\n}",
+        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"conversationProviderId\": \"twilio\",\n  \"contactId\": \"{{ TuxhN0tL15zliyV0jgYr }}\",\n  \"message\": \"Low stock: {{ $json.productName }} at {{ $json.currentCount }} units (reorder: {{ $json.reorderPoint }}). SKU: {{ $json.sku }}\"\n}",
         "options": {},
         "sendHeaders": true,
         "headerParameters": {

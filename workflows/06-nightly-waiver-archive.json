@@ -1,5 +1,5 @@
 {
-  "name": "WF6 \u2014 Nightly Waiver Archive",
+  "name": "WF6 — Nightly Waiver Archive",
   "nodes": [
     {
       "parameters": {
@@ -45,7 +45,7 @@
           "parameters": [
             {
               "name": "locationId",
-              "value": "={{ $env.GHL_LOCATION_ID }}"
+              "value": "={{ n3G3ccCrPjsSH9bGlfIQ }}"
             },
             {
               "name": "startAt",
@@ -138,7 +138,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Generate HTML from submission data for PDF conversion\nconst sub = $json.submissionData;\nconst others = sub.others || {};\n\nlet html = `\n<!DOCTYPE html>\n<html>\n<head><style>\n  body { font-family: Arial, sans-serif; margin: 40px; }\n  h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }\n  .field { margin: 10px 0; }\n  .label { font-weight: bold; color: #555; }\n  .value { margin-left: 10px; }\n  .footer { margin-top: 40px; font-size: 12px; color: #888; }\n</style></head>\n<body>\n  <h1>TRX Tattoos & Piercing \u2014 Consent Form</h1>\n  <p><strong>Form Type:</strong> ${$json.formType}</p>\n  <p><strong>Date:</strong> ${sub.createdAt || new Date().toISOString()}</p>\n  <hr>\n`;\n\nfor (const [key, value] of Object.entries(others)) {\n  html += `<div class=\"field\"><span class=\"label\">${key}:</span> <span class=\"value\">${value}</span></div>\\n`;\n}\n\nhtml += `\n  <div class=\"footer\">\n    <p>Archived by TRX automated system. Submission ID: ${sub.id}</p>\n    <p>Missouri 2-year retention requirement \u2014 do not delete before retention period expires.</p>\n  </div>\n</body>\n</html>`;\n\nreturn [{ json: { ...$json, html, binary: null } }];"
+        "jsCode": "// Generate HTML from submission data for PDF conversion\nconst sub = $json.submissionData;\nconst others = sub.others || {};\n\nlet html = `\n<!DOCTYPE html>\n<html>\n<head><style>\n  body { font-family: Arial, sans-serif; margin: 40px; }\n  h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }\n  .field { margin: 10px 0; }\n  .label { font-weight: bold; color: #555; }\n  .value { margin-left: 10px; }\n  .footer { margin-top: 40px; font-size: 12px; color: #888; }\n</style></head>\n<body>\n  <h1>TRX Tattoos & Piercing — Consent Form</h1>\n  <p><strong>Form Type:</strong> ${$json.formType}</p>\n  <p><strong>Date:</strong> ${sub.createdAt || new Date().toISOString()}</p>\n  <hr>\n`;\n\nfor (const [key, value] of Object.entries(others)) {\n  html += `<div class=\"field\"><span class=\"label\">${key}:</span> <span class=\"value\">${value}</span></div>\\n`;\n}\n\nhtml += `\n  <div class=\"footer\">\n    <p>Archived by TRX automated system. Submission ID: ${sub.id}</p>\n    <p>Missouri 2-year retention requirement — do not delete before retention period expires.</p>\n  </div>\n</body>\n</html>`;\n\nreturn [{ json: { ...$json, html, binary: null } }];"
       },
       "id": "generate-html",
       "name": "Generate HTML for PDF",
@@ -225,13 +225,17 @@
     },
     {
       "parameters": {
-        "workflowId": "NjQ4osMVHKK4l1Wa",
+        "workflowId": {
+          "__rl": true,
+          "value": "NjQ4osMVHKK4l1Wa",
+          "mode": "id"
+        },
         "options": {},
         "workflowInputs": {
           "values": [
             {
               "name": "workflowName",
-              "value": "WF6 \u2014 Nightly Waiver Archive"
+              "value": "WF6 — Nightly Waiver Archive"
             },
             {
               "name": "errorMessage",
