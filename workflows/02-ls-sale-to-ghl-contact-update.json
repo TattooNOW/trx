@@ -147,14 +147,68 @@
     },
     {
       "parameters": {
-        "jsCode": "// Extract sale data from parsed webhook + fresh customer data from LS API\nconst verifyData = $('Verify & Parse Webhook').first().json;\nconst sale = verifyData.sale;\nconst fetchResult = $json;\nconst customerData = fetchResult.data || fetchResult;\n\n// Customer details: prefer fresh LS API data, fall back to embedded webhook customer\nconst embeddedCustomer = sale.customer || {};\nconst customerEmail = (customerData.email || embeddedCustomer.email || '').trim().toLowerCase();\nconst customerFirstName = customerData.first_name || embeddedCustomer.first_name || '';\nconst customerLastName = customerData.last_name || embeddedCustomer.last_name || '';\nconst customerPhone = customerData.phone || customerData.mobile || embeddedCustomer.phone || embeddedCustomer.mobile || '';\n\nconst saleId = sale.id;\n// Use totals object (real LS webhook structure)\nconst totals = sale.totals || {};\nconst saleTotal = parseFloat(totals.total_price || sale.total_price_incl || sale.total_price || 0);\nconst saleTotalWithTax = parseFloat(totals.total_payment || sale.total_price_incl || 0);\n\nconst employeeId = sale.user_id || '';\nconst employeeName = (sale.user && sale.user.name) || '';\nconst registerId = sale.register_id || '';\nconst saleDate = sale.sale_date || sale.created_at || new Date().toISOString();\nconst invoiceNumber = sale.invoice_number || '';\n\n// Tag mapping — LS webhook register_sale_products DON'T include product names\n// Only product_id is available. For now, apply [system] lightspeed-customer.\n// Product-type tags ([client] tattoo, [client] piercing) require product enrichment (TODO).\nconst tags = ['[system] lightspeed-customer'];\n\n// Check the sale note field — artists often put their name here\nconst saleNote = sale.note || '';\n\nif (!customerEmail) {\n  throw new Error('Sale ' + saleId + ': customer ' + sale.customer_id + ' has no email — cannot sync to GHL');\n}\n\nreturn [{\n  json: {\n    customerEmail,\n    customerFirstName,\n    customerLastName,\n    customerPhone,\n    saleId: String(saleId),\n    saleTotal,\n    saleTotalWithTax,\n    saleDate,\n    invoiceNumber,\n    employeeId: String(employeeId),\n    employeeName,\n    registerId: String(registerId),\n    saleNote,\n    tags\n  }\n}];"
+        "method": "GET",
+        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/product_types",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "fetch-product-types",
+      "name": "Fetch Product Types",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        -60
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
+        }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/products?page_size=500&deleted=false",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "fetch-all-products",
+      "name": "Fetch All Products",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        -60
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "rwkPiSgkd7mzdn83",
+          "name": "Lightspeed TRX"
+        }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract sale data + enrich products for tag mapping\nconst verifyData = $('Verify & Parse Webhook').first().json;\nconst sale = verifyData.sale;\n\n// Customer data from LS API fetch\nconst fetchResult = $('Fetch Customer from LS').first().json;\nconst customerData = fetchResult.data || fetchResult;\nconst embeddedCustomer = sale.customer || {};\nconst customerEmail = (customerData.email || embeddedCustomer.email || '').trim().toLowerCase();\nconst customerFirstName = customerData.first_name || embeddedCustomer.first_name || '';\nconst customerLastName = customerData.last_name || embeddedCustomer.last_name || '';\nconst customerPhone = customerData.phone || customerData.mobile || embeddedCustomer.phone || embeddedCustomer.mobile || '';\n\n// Sale details\nconst saleId = sale.id;\nconst totals = sale.totals || {};\nconst saleTotal = parseFloat(totals.total_price || sale.total_price_incl || sale.total_price || 0);\nconst saleTotalWithTax = parseFloat(totals.total_payment || sale.total_price_incl || 0);\nconst employeeId = sale.user_id || '';\nconst employeeName = (sale.user && sale.user.name) || '';\nconst registerId = sale.register_id || '';\nconst saleDate = sale.sale_date || sale.created_at || new Date().toISOString();\nconst invoiceNumber = sale.invoice_number || '';\nconst saleNote = sale.note || '';\n\n// --- Product enrichment for tag mapping ---\n// Build product type lookup: type_id → type_name\nconst productTypesResp = $('Fetch Product Types').first().json;\nconst productTypes = (productTypesResp.data || []);\nconst typeMap = {};\nfor (const pt of productTypes) {\n  typeMap[pt.id] = (pt.name || '').toLowerCase().trim();\n}\n\n// Build product lookup: product_id → product_type_id\nconst allProductsResp = $('Fetch All Products').first().json;\nconst allProducts = (allProductsResp.data || []);\nconst productMap = {};\nfor (const p of allProducts) {\n  productMap[p.id] = {\n    name: p.name || '',\n    product_type_id: p.product_type_id || '',\n    typeName: typeMap[p.product_type_id] || ''\n  };\n}\n\n// Category → tag mapping (from CLAUDE.md)\nconst categoryTagMap = {\n  'tattoo artist': '[client] tattoo',\n  'microblader': '[client] tattoo',\n  'piercing': '[client] piercing',\n  'piercer': '[client] piercing',\n  'tooth gem': '[client] piercing'\n};\n\n// Also match product names as fallback\nconst nameTagRules = [\n  { pattern: /tattoo/i, tag: '[client] tattoo' },\n  { pattern: /microbla/i, tag: '[client] tattoo' },\n  { pattern: /pierc/i, tag: '[client] piercing' },\n  { pattern: /tooth\\s*gem/i, tag: '[client] piercing' }\n];\n\nconst tags = new Set(['[system] lightspeed-customer']);\nconst saleProducts = sale.register_sale_products || [];\nconst enrichedProducts = [];\n\nfor (const item of saleProducts) {\n  const product = productMap[item.product_id] || {};\n  const typeName = product.typeName || '';\n  const productName = product.name || '';\n\n  enrichedProducts.push({\n    product_id: item.product_id,\n    name: productName,\n    typeName: typeName,\n    price: item.price,\n    quantity: item.quantity\n  });\n\n  // Match by product type name (primary)\n  for (const [key, tag] of Object.entries(categoryTagMap)) {\n    if (typeName.includes(key)) {\n      tags.add(tag);\n    }\n  }\n\n  // Match by product name (fallback)\n  for (const rule of nameTagRules) {\n    if (rule.pattern.test(productName)) {\n      tags.add(rule.tag);\n    }\n  }\n}\n\nif (!customerEmail) {\n  throw new Error('Sale ' + saleId + ': customer has no email — cannot sync to GHL');\n}\n\nreturn [{\n  json: {\n    customerEmail,\n    customerFirstName,\n    customerLastName,\n    customerPhone,\n    saleId: String(saleId),\n    saleTotal,\n    saleTotalWithTax,\n    saleDate,\n    invoiceNumber,\n    employeeId: String(employeeId),\n    employeeName,\n    registerId: String(registerId),\n    saleNote,\n    tags: Array.from(tags),\n    enrichedProducts,\n    hasTattoo: tags.has('[client] tattoo'),\n    hasPiercing: tags.has('[client] piercing')\n  }\n}];"
       },
       "id": "extract-sale-data",
       "name": "Extract Sale Data + Tags",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1100,
+        1540,
         -60
       ]
     },
@@ -172,7 +226,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
       "position": [
-        1320,
+        1760,
         -60
       ]
     },
@@ -198,7 +252,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1540,
+        1980,
         -60
       ],
       "credentials": {
@@ -221,7 +275,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1760,
+        2200,
         -60
       ]
     },
@@ -250,7 +304,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1980,
+        2420,
         -120
       ],
       "credentials": {
@@ -289,7 +343,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1980,
+        2420,
         0
       ],
       "credentials": {
@@ -364,6 +418,28 @@
       ]
     },
     "Fetch Customer from LS": {
+      "main": [
+        [
+          {
+            "node": "Fetch Product Types",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Product Types": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Products": {
       "main": [
         [
           {
