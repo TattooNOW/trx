@@ -197,6 +197,180 @@
     },
     {
       "parameters": {
+        "method": "GET",
+        "url": "https://services.leadconnectorhq.com/calendars/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "locationId",
+              "value": "n3G3ccCrPjsSH9bGlfIQ"
+            },
+            {
+              "name": "contactId",
+              "value": "={{ $('Validate Payload').item.json.contactId }}"
+            },
+            {
+              "name": "startTime",
+              "value": "={{ new Date().getTime() }}"
+            },
+            {
+              "name": "endTime",
+              "value": "={{ new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).getTime() }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "fetch-next-appointment",
+      "name": "Fetch Next Appointment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
+        }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract the first upcoming event from the response\nconst response = $json.body || $json;\nconst events = response.events || response.data || [];\n\nif (!events.length) {\n  return [{ json: { hasAppointment: false, message: 'No upcoming appointment found for contact' } }];\n}\n\n// Sort by start time ascending, pick the earliest\nconst sorted = events.sort((a, b) => new Date(a.startTime || a.start_time) - new Date(b.startTime || b.start_time));\nconst next = sorted[0];\n\nreturn [{\n  json: {\n    hasAppointment: true,\n    eventId: next.id,\n    calendarId: next.calendarId || next.calendar_id,\n    title: next.title || next.name || '',\n    startTime: next.startTime || next.start_time,\n    status: next.status\n  }\n}];"
+      },
+      "id": "extract-appointment",
+      "name": "Extract Appointment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "has-appointment",
+              "leftValue": "={{ $json.hasAppointment }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-has-appointment",
+      "name": "Has Appointment?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1980,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://services.leadconnectorhq.com/calendars/events/{{ $('Extract Appointment').item.json.eventId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"status\": \"confirmed\",\n  \"calendarId\": \"{{ $('Extract Appointment').item.json.calendarId }}\",\n  \"startTime\": \"{{ $('Extract Appointment').item.json.startTime }}\"\n}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "confirm-appointment",
+      "name": "Confirm Appointment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        -180
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
+        }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "note",
+              "value": "No upcoming appointment found — store credit issued but appointment not auto-confirmed"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "no-appointment-note",
+      "name": "No Appointment Found",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2200,
+        -40
+      ]
+    },
+    {
+      "parameters": {
         "workflowId": {
           "__rl": true,
           "value": "NjQ4osMVHKK4l1Wa",
@@ -347,6 +521,57 @@
         [
           {
             "node": "Log Credit Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success": {
+      "main": [
+        [
+          {
+            "node": "Fetch Next Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Next Appointment": {
+      "main": [
+        [
+          {
+            "node": "Extract Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Appointment": {
+      "main": [
+        [
+          {
+            "node": "Has Appointment?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Appointment?": {
+      "main": [
+        [
+          {
+            "node": "Confirm Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Appointment Found",
             "type": "main",
             "index": 0
           }
