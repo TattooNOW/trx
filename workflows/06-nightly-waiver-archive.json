@@ -45,7 +45,7 @@
           "parameters": [
             {
               "name": "locationId",
-              "value": "={{ n3G3ccCrPjsSH9bGlfIQ }}"
+              "value": "n3G3ccCrPjsSH9bGlfIQ"
             },
             {
               "name": "startAt",

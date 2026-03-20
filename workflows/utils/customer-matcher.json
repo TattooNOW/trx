@@ -1,5 +1,5 @@
 {
-  "name": "Util \u2014 Customer Matcher",
+  "name": "Util — Customer Matcher",
   "nodes": [
     {
       "parameters": {},
@@ -98,7 +98,7 @@
           "parameters": [
             {
               "name": "locationId",
-              "value": "={{ n3G3ccCrPjsSH9bGlfIQ }}"
+              "value": "n3G3ccCrPjsSH9bGlfIQ"
             },
             {
               "name": "query",
@@ -147,7 +147,7 @@
           "conditions": [
             {
               "id": "ls-found",
-              "leftValue": "={{ $('Search Lightspeed Customer').json.data?.length > 0 }}",
+              "leftValue": "={{ $('Search Lightspeed Customer').json.data?.some(c => c.email && c.email.toLowerCase() === $('Extract Input').item.json.email.toLowerCase()) }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -259,7 +259,7 @@
           "parameters": [
             {
               "name": "locationId",
-              "value": "={{ n3G3ccCrPjsSH9bGlfIQ }}"
+              "value": "n3G3ccCrPjsSH9bGlfIQ"
             },
             {
               "name": "firstName",
@@ -317,7 +317,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Gather results from all branches\nconst input = $('Extract Input').first().json;\n\n// Lightspeed result\nlet lightspeed_customer_id = null;\nlet found_in_ls = false;\n\ntry {\n  const lsSearch = $('Search Lightspeed Customer').first().json;\n  if (lsSearch.data && lsSearch.data.length > 0) {\n    lightspeed_customer_id = lsSearch.data[0].id;\n    found_in_ls = true;\n  }\n} catch (e) {}\n\nif (!found_in_ls) {\n  try {\n    const lsCreate = $('Create LS Customer').first().json;\n    if (lsCreate.id) {\n      lightspeed_customer_id = lsCreate.id;\n    }\n  } catch (e) {}\n}\n\n// GHL result\nlet ghl_contact_id = null;\nlet found_in_ghl = false;\n\ntry {\n  const ghlSearch = $('Search GHL Contact').first().json;\n  if (ghlSearch.contacts && ghlSearch.contacts.length > 0) {\n    ghl_contact_id = ghlSearch.contacts[0].id;\n    found_in_ghl = true;\n  }\n} catch (e) {}\n\nif (!found_in_ghl) {\n  try {\n    const ghlCreate = $('Create GHL Contact').first().json;\n    if (ghlCreate.contact && ghlCreate.contact.id) {\n      ghl_contact_id = ghlCreate.contact.id;\n    }\n  } catch (e) {}\n}\n\nreturn [{\n  json: {\n    ghl_contact_id,\n    lightspeed_customer_id,\n    found_in_ghl,\n    found_in_ls,\n    email: input.email\n  }\n}];"
+        "jsCode": "// Gather results from all branches\nconst input = $('Extract Input').first().json;\n\n// Lightspeed result\nlet lightspeed_customer_id = null;\nlet found_in_ls = false;\n\ntry {\n  const lsSearch = $('Search Lightspeed Customer').first().json;\n  if (lsSearch.data && lsSearch.data.length > 0) {\n    // Verify email matches to avoid picking up generic WALKIN customer\n    const match = lsSearch.data.find(c => c.email && c.email.toLowerCase() === input.email.toLowerCase());\n    if (match) {\n      lightspeed_customer_id = match.id;\n      found_in_ls = true;\n    }\n  }\n} catch (e) {}\n\nif (!found_in_ls) {\n  try {\n    const lsCreate = $('Create LS Customer').first().json;\n    if (lsCreate.data && lsCreate.data.id) {\n      lightspeed_customer_id = lsCreate.data.id;\n    } else if (lsCreate.id) {\n      lightspeed_customer_id = lsCreate.id;\n    }\n  } catch (e) {}\n}\n\n// GHL result\nlet ghl_contact_id = null;\nlet found_in_ghl = false;\n\ntry {\n  const ghlSearch = $('Search GHL Contact').first().json;\n  if (ghlSearch.contacts && ghlSearch.contacts.length > 0) {\n    ghl_contact_id = ghlSearch.contacts[0].id;\n    found_in_ghl = true;\n  }\n} catch (e) {}\n\nif (!found_in_ghl) {\n  try {\n    const ghlCreate = $('Create GHL Contact').first().json;\n    if (ghlCreate.contact && ghlCreate.contact.id) {\n      ghl_contact_id = ghlCreate.contact.id;\n    }\n  } catch (e) {}\n}\n\nreturn [{\n  json: {\n    ghl_contact_id,\n    lightspeed_customer_id,\n    found_in_ghl,\n    found_in_ls,\n    email: input.email\n  }\n}];"
       },
       "id": "build-result",
       "name": "Build Result",

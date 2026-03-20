@@ -51,8 +51,8 @@
     },
     {
       "parameters": {
-        "fromEmail": "={{ gabe@tattoonow.com }}",
-        "toEmail": "={{ gabe@tattoonow.com }}",
+        "fromEmail": "gabe@tattoonow.com",
+        "toEmail": "gabe@tattoonow.com",
         "subject": "=TRX n8n Error: {{ $json.workflowName }}",
         "emailType": "text",
         "message": "=Workflow: {{ $json.workflowName }}\nTime: {{ $json.timestamp }}\nSeverity: {{ $json.severity }}\n\nError: {{ $json.errorMessage }}\n\nPayload:\n{{ $json.payload }}"

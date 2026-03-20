@@ -76,16 +76,16 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
               "id": "has-ls-id",
-              "leftValue": "={{ $json.lightspeed_customer_id }}",
-              "rightValue": "",
+              "leftValue": "={{ ($json.lightspeed_customer_id || '').length > 0 }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "isNotEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -105,12 +105,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits",
+        "url": "=https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits/{{ $('Find/Create Customer').item.json.lightspeed_customer_id }}/transactions",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"customer_id\": \"{{ $('Find/Create Customer').item.json.lightspeed_customer_id }}\",\n  \"type\": \"ISSUE\",\n  \"amount\": {{ $('Validate Payload').item.json.paymentAmount }},\n  \"notes\": \"Deposit via booking — {{ $('Validate Payload').item.json.artistName }} {{ $('Validate Payload').item.json.appointmentDate }}\",\n  \"client_id\": \"{{ $('Validate Payload').item.json.paymentId }}\"\n}",
+        "jsonBody": "={\n  \"store_credit_customer_id\": \"{{ $('Find/Create Customer').item.json.lightspeed_customer_id }}\",\n  \"amount\": {{ $('Validate Payload').item.json.paymentAmount }},\n  \"type\": \"ISSUE\",\n  \"notes\": \"Deposit via booking — {{ $('Validate Payload').item.json.artistName }} {{ $('Validate Payload').item.json.appointmentDate }}\",\n  \"user_id\": \"0ac54c19-8c55-11ed-f913-3dd92e9d5935\",\n  \"client_id\": \"{{ $('Validate Payload').item.json.paymentId }}\"\n}",
         "options": {
           "response": {
             "response": {

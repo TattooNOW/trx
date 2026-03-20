@@ -147,7 +147,7 @@
           "parameters": [
             {
               "name": "locationId",
-              "value": "={{ n3G3ccCrPjsSH9bGlfIQ }}"
+              "value": "n3G3ccCrPjsSH9bGlfIQ"
             },
             {
               "name": "query",
@@ -361,8 +361,8 @@
     },
     {
       "parameters": {
-        "fromEmail": "={{ gabe@tattoonow.com }}",
-        "toEmail": "={{ gabe@tattoonow.com }}",
+        "fromEmail": "gabe@tattoonow.com",
+        "toEmail": "gabe@tattoonow.com",
         "subject": "TRX Nightly Reconciliation Summary",
         "emailType": "text",
         "message": "=Nightly reconciliation complete.\n\nCheck n8n execution log for details."

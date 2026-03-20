@@ -103,18 +103,9 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits",
+        "url": "=https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits/{{ $('Find LS Customer').first().json.data[0].id }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "customer_id",
-              "value": "={{ $('Find LS Customer').first().json.data[0].id }}"
-            }
-          ]
-        },
         "options": {}
       },
       "id": "get-store-credits",
@@ -184,12 +175,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits",
+        "url": "=https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits/{{ $json.customerId }}/transactions",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"customer_id\": \"{{ $json.customerId }}\",\n  \"type\": \"REVERSE\",\n  \"amount\": {{ $json.creditAmount }},\n  \"notes\": \"Refund — cancelled {{ $json.hoursDiff }}hrs before appointment ({{ $json.appointmentType }})\"\n}",
+        "jsonBody": "={\n  \"store_credit_customer_id\": \"{{ $json.customerId }}\",\n  \"amount\": -{{ $json.creditAmount }},\n  \"type\": \"REDEMPTION\",\n  \"notes\": \"Refund — cancelled {{ $json.hoursDiff }}hrs before appointment ({{ $json.appointmentType }})\",\n  \"user_id\": \"0ac54c19-8c55-11ed-f913-3dd92e9d5935\",\n  \"client_id\": \"refund-{{ $json.appointmentDate }}-{{ Date.now() }}\"\n}",
         "options": {}
       },
       "id": "reverse-refund",
@@ -213,8 +204,8 @@
     },
     {
       "parameters": {
-        "fromEmail": "={{ gabe@tattoonow.com }}",
-        "toEmail": "={{ gabe@tattoonow.com }}",
+        "fromEmail": "gabe@tattoonow.com",
+        "toEmail": "gabe@tattoonow.com",
         "subject": "=TRX: Process Stripe Refund — {{ $('Validate & Extract').first().json.contactEmail }}",
         "emailType": "text",
         "message": "=A deposit has been refunded in Lightspeed (cancelled {{ $('Validate & Extract').first().json.hoursDiff }}hrs before appointment).\n\nClient: {{ $('Validate & Extract').first().json.contactEmail }}\nAmount: ${{ $('Validate & Extract').first().json.creditAmount }}\nAppointment: {{ $('Validate & Extract').first().json.appointmentType }} on {{ $('Validate & Extract').first().json.appointmentDate }}\n\nACTION REQUIRED: Process the corresponding Stripe refund manually in GHL."
@@ -232,12 +223,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits",
+        "url": "=https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits/{{ $json.customerId }}/transactions",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"customer_id\": \"{{ $json.customerId }}\",\n  \"type\": \"REVERSE\",\n  \"amount\": {{ $json.creditAmount }},\n  \"notes\": \"Deposit forfeited — {{ $json.isNoShow ? 'no-show' : 'late cancel (<48hrs)' }} — {{ $json.appointmentType }} on {{ $json.appointmentDate }}\"\n}",
+        "jsonBody": "={\n  \"store_credit_customer_id\": \"{{ $json.customerId }}\",\n  \"amount\": -{{ $json.creditAmount }},\n  \"type\": \"REDEMPTION\",\n  \"notes\": \"Deposit forfeited — {{ $json.isNoShow ? 'no-show' : 'late cancel (<48hrs)' }} — {{ $json.appointmentType }} on {{ $json.appointmentDate }}\",\n  \"user_id\": \"0ac54c19-8c55-11ed-f913-3dd92e9d5935\",\n  \"client_id\": \"forfeit-{{ $json.appointmentDate }}-{{ Date.now() }}\"\n}",
         "options": {}
       },
       "id": "reverse-forfeit",
