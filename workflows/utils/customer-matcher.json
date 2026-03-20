@@ -2,11 +2,13 @@
   "name": "Util — Customer Matcher",
   "nodes": [
     {
-      "parameters": {},
+      "parameters": {
+        "inputSource": "passthrough"
+      },
       "id": "trigger",
       "name": "Sub-Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [
         0,
         0
@@ -14,32 +16,12 @@
     },
     {
       "parameters": {
-        "values": {
-          "string": [
-            {
-              "name": "email",
-              "value": "={{ $json.email }}"
-            },
-            {
-              "name": "firstName",
-              "value": "={{ $json.firstName || '' }}"
-            },
-            {
-              "name": "lastName",
-              "value": "={{ $json.lastName || '' }}"
-            },
-            {
-              "name": "phone",
-              "value": "={{ $json.phone || '' }}"
-            }
-          ]
-        },
-        "options": {}
+        "jsCode": "// Extract and validate input from calling workflow\nconst item = $input.first().json;\n\n// Support both naming conventions from callers\nconst email = (item.email || item.customerEmail || '').trim().toLowerCase();\nconst firstName = (item.firstName || item.customerFirstName || item.first_name || '').trim();\nconst lastName = (item.lastName || item.customerLastName || item.last_name || '').trim();\nconst phone = (item.phone || item.customerPhone || '').trim();\n\nif (!email) {\n  throw new Error('Customer Matcher requires an email address — received: ' + JSON.stringify(Object.keys(item)));\n}\n\nreturn [{ json: { email, firstName, lastName, phone } }];"
       },
       "id": "extract-input",
       "name": "Extract Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         220,
         0
@@ -109,7 +91,7 @@
           ]
         },
         "specifyBody": "json",
-        "jsonBody": "={\n  \"locationId\": \"n3G3ccCrPjsSH9bGlfIQ\",\n  \"query\": \"{{ $('Extract Input').item.json.email }}\",\n  \"pageLimit\": 1\n}"
+        "jsonBody": "={\n  \"locationId\": \"n3G3ccCrPjsSH9bGlfIQ\",\n  \"query\": \"{{ $('Extract Input').first().json.email }}\",\n  \"pageLimit\": 1\n}"
       },
       "id": "ghl-search",
       "name": "Search GHL Contact",
@@ -132,6 +114,19 @@
     },
     {
       "parameters": {
+        "jsCode": "// Validate LS search results — only accept exact email match\nconst inputEmail = $('Extract Input').first().json.email;\nconst searchResult = $json;\nconst customers = (searchResult.data || []);\n\n// LS search can return fuzzy matches — verify email matches exactly\nconst exactMatch = customers.find(c =>\n  c.email && c.email.toLowerCase().trim() === inputEmail\n);\n\nreturn [{ json: { found: !!exactMatch, customer: exactMatch || null } }];"
+      },
+      "id": "ls-validate",
+      "name": "Validate LS Match",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -120
+      ]
+    },
+    {
+      "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
@@ -141,7 +136,7 @@
           "conditions": [
             {
               "id": "ls-found",
-              "leftValue": "={{ ($('Search Lightspeed Customer').json.data || []).length > 0 }}",
+              "leftValue": "={{ $json.found }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -158,7 +153,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        700,
+        880,
         -120
       ]
     },
@@ -171,14 +166,14 @@
         "sendBody": true,
         "options": {},
         "specifyBody": "json",
-        "jsonBody": "={\n  \"first_name\": \"{{ $('Extract Input').item.json.firstName }}\",\n  \"last_name\": \"{{ $('Extract Input').item.json.lastName }}\",\n  \"email\": \"{{ $('Extract Input').item.json.email }}\",\n  \"phone\": \"{{ $('Extract Input').item.json.phone }}\"\n}"
+        "jsonBody": "={\n  \"first_name\": \"{{ $('Extract Input').first().json.firstName }}\",\n  \"last_name\": \"{{ $('Extract Input').first().json.lastName }}\",\n  \"email\": \"{{ $('Extract Input').first().json.email }}\",\n  \"phone\": \"{{ $('Extract Input').first().json.phone }}\"\n}"
       },
       "id": "ls-create",
       "name": "Create LS Customer",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        960,
+        1100,
         -60
       ],
       "credentials": {
@@ -194,6 +189,19 @@
     },
     {
       "parameters": {
+        "jsCode": "// Validate GHL search results — only accept exact email match\nconst inputEmail = $('Extract Input').first().json.email;\nconst searchResult = $json;\nconst contacts = searchResult.contacts || [];\n\n// GHL search is fuzzy — verify email matches exactly\nconst exactMatch = contacts.find(c =>\n  c.email && c.email.toLowerCase().trim() === inputEmail\n);\n\nreturn [{ json: { found: !!exactMatch, contact: exactMatch || null } }];"
+      },
+      "id": "ghl-validate",
+      "name": "Validate GHL Match",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        120
+      ]
+    },
+    {
+      "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
@@ -203,7 +211,7 @@
           "conditions": [
             {
               "id": "ghl-found",
-              "leftValue": "={{ $('Search GHL Contact').json.contacts?.length > 0 }}",
+              "leftValue": "={{ $json.found }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -220,7 +228,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        700,
+        880,
         120
       ]
     },
@@ -248,14 +256,14 @@
           ]
         },
         "specifyBody": "json",
-        "jsonBody": "={\n  \"locationId\": \"n3G3ccCrPjsSH9bGlfIQ\",\n  \"firstName\": \"{{ $('Extract Input').item.json.firstName }}\",\n  \"lastName\": \"{{ $('Extract Input').item.json.lastName }}\",\n  \"email\": \"{{ $('Extract Input').item.json.email }}\",\n  \"phone\": \"{{ $('Extract Input').item.json.phone }}\"\n}"
+        "jsonBody": "={\n  \"locationId\": \"n3G3ccCrPjsSH9bGlfIQ\",\n  \"firstName\": \"{{ $('Extract Input').first().json.firstName }}\",\n  \"lastName\": \"{{ $('Extract Input').first().json.lastName }}\",\n  \"email\": \"{{ $('Extract Input').first().json.email }}\",\n  \"phone\": \"{{ $('Extract Input').first().json.phone }}\"\n}"
       },
       "id": "ghl-create",
       "name": "Create GHL Contact",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        960,
+        1100,
         180
       ],
       "credentials": {
@@ -271,14 +279,14 @@
     },
     {
       "parameters": {
-        "jsCode": "// Gather results from all branches\nconst input = $('Extract Input').first().json;\n\n// Lightspeed result\nlet lightspeed_customer_id = null;\nlet found_in_ls = false;\n\ntry {\n  const lsSearch = $('Search Lightspeed Customer').first().json;\n  if (lsSearch.data && lsSearch.data.length > 0) {\n    lightspeed_customer_id = lsSearch.data[0].id;\n    found_in_ls = true;\n  }\n} catch (e) {}\n\nif (!found_in_ls) {\n  try {\n    const lsCreate = $('Create LS Customer').first().json;\n    if (lsCreate.data && lsCreate.data.id) {\n      lightspeed_customer_id = lsCreate.data.id;\n    } else if (lsCreate.id) {\n      lightspeed_customer_id = lsCreate.id;\n    }\n  } catch (e) {}\n}\n\n// GHL result\nlet ghl_contact_id = null;\nlet found_in_ghl = false;\n\ntry {\n  const ghlSearch = $('Search GHL Contact').first().json;\n  if (ghlSearch.contacts && ghlSearch.contacts.length > 0) {\n    ghl_contact_id = ghlSearch.contacts[0].id;\n    found_in_ghl = true;\n  }\n} catch (e) {}\n\nif (!found_in_ghl) {\n  try {\n    const ghlCreate = $('Create GHL Contact').first().json;\n    if (ghlCreate.contact && ghlCreate.contact.id) {\n      ghl_contact_id = ghlCreate.contact.id;\n    }\n  } catch (e) {}\n}\n\nreturn [{\n  json: {\n    ghl_contact_id,\n    lightspeed_customer_id,\n    found_in_ghl,\n    found_in_ls,\n    email: input.email\n  }\n}];"
+        "jsCode": "// Gather results from all branches\nconst input = $('Extract Input').first().json;\n\n// Lightspeed result\nlet lightspeed_customer_id = null;\nlet found_in_ls = false;\n\ntry {\n  const lsValidate = $('Validate LS Match').first().json;\n  if (lsValidate.found && lsValidate.customer) {\n    lightspeed_customer_id = lsValidate.customer.id;\n    found_in_ls = true;\n  }\n} catch (e) {}\n\nif (!found_in_ls) {\n  try {\n    const lsCreate = $('Create LS Customer').first().json;\n    if (lsCreate.data && lsCreate.data.id) {\n      lightspeed_customer_id = lsCreate.data.id;\n    } else if (lsCreate.id) {\n      lightspeed_customer_id = lsCreate.id;\n    }\n  } catch (e) {}\n}\n\n// GHL result\nlet ghl_contact_id = null;\nlet found_in_ghl = false;\n\ntry {\n  const ghlValidate = $('Validate GHL Match').first().json;\n  if (ghlValidate.found && ghlValidate.contact) {\n    ghl_contact_id = ghlValidate.contact.id;\n    found_in_ghl = true;\n  }\n} catch (e) {}\n\nif (!found_in_ghl) {\n  try {\n    const ghlCreate = $('Create GHL Contact').first().json;\n    if (ghlCreate.contact && ghlCreate.contact.id) {\n      ghl_contact_id = ghlCreate.contact.id;\n    }\n  } catch (e) {}\n}\n\nreturn [{\n  json: {\n    ghl_contact_id,\n    lightspeed_customer_id,\n    found_in_ghl,\n    found_in_ls,\n    email: input.email\n  }\n}];"
       },
       "id": "build-result",
       "name": "Build Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1220,
+        1360,
         0
       ]
     }
@@ -315,6 +323,17 @@
       "main": [
         [
           {
+            "node": "Validate LS Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate LS Match": {
+      "main": [
+        [
+          {
             "node": "LS Customer Exists?",
             "type": "main",
             "index": 0
@@ -323,6 +342,17 @@
       ]
     },
     "Search GHL Contact": {
+      "main": [
+        [
+          {
+            "node": "Validate GHL Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate GHL Match": {
       "main": [
         [
           {

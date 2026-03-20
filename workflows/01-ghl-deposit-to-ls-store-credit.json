@@ -39,27 +39,7 @@
           "value": "vQc7pV2wjDImrvks",
           "mode": "id"
         },
-        "options": {},
-        "workflowInputs": {
-          "values": [
-            {
-              "name": "email",
-              "value": "={{ $json.contactEmail }}"
-            },
-            {
-              "name": "firstName",
-              "value": ""
-            },
-            {
-              "name": "lastName",
-              "value": ""
-            },
-            {
-              "name": "phone",
-              "value": ""
-            }
-          ]
-        }
+        "options": {}
       },
       "id": "customer-matcher",
       "name": "Find/Create Customer",

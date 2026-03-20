@@ -261,27 +261,7 @@
           "value": "vQc7pV2wjDImrvks",
           "mode": "id"
         },
-        "options": {},
-        "workflowInputs": {
-          "values": [
-            {
-              "name": "email",
-              "value": "={{ $('Validate & Extract').first().json.contactEmail }}"
-            },
-            {
-              "name": "firstName",
-              "value": ""
-            },
-            {
-              "name": "lastName",
-              "value": ""
-            },
-            {
-              "name": "phone",
-              "value": ""
-            }
-          ]
-        }
+        "options": {}
       },
       "id": "get-ghl-contact",
       "name": "Get GHL Contact",
