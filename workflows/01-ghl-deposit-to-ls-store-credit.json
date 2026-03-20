@@ -178,30 +178,9 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "https://services.leadconnectorhq.com/calendars/events",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $('Validate Payload').item.json.contactId }}/appointments",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "locationId",
-              "value": "n3G3ccCrPjsSH9bGlfIQ"
-            },
-            {
-              "name": "contactId",
-              "value": "={{ $('Validate Payload').item.json.contactId }}"
-            },
-            {
-              "name": "startTime",
-              "value": "={{ new Date().toISOString() }}"
-            },
-            {
-              "name": "endTime",
-              "value": "={{ new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() }}"
-            }
-          ]
-        },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -240,7 +219,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Extract the first upcoming event from the GHL calendar events response\nconst response = $json.body || $json;\nconst statusCode = $json.statusCode || response.statusCode || 0;\nconst events = response.events || response.data || [];\n\n// Log what we got for debugging\nconst debugInfo = {\n  statusCode,\n  responseKeys: Object.keys(response).join(', '),\n  eventCount: Array.isArray(events) ? events.length : 'not-array'\n};\n\n// If GHL API returned an error, surface it\nif (statusCode >= 400) {\n  return [{ json: { hasAppointment: false, message: 'GHL calendar API error: HTTP ' + statusCode, debug: debugInfo, apiResponse: response } }];\n}\n\nif (!events.length) {\n  return [{ json: { hasAppointment: false, message: 'No upcoming appointment found for contact', debug: debugInfo } }];\n}\n\n// Sort by start time ascending, pick the earliest\nconst sorted = events.sort((a, b) => new Date(a.startTime || a.start_time) - new Date(b.startTime || b.start_time));\nconst next = sorted[0];\n\nreturn [{\n  json: {\n    hasAppointment: true,\n    eventId: next.id,\n    calendarId: next.calendarId || next.calendar_id,\n    title: next.title || next.name || '',\n    startTime: next.startTime || next.start_time,\n    status: next.status,\n    debug: debugInfo\n  }\n}];"
+        "jsCode": "// Extract the next upcoming appointment from GET /contacts/{id}/appointments\nconst response = $json.body || $json;\nconst statusCode = $json.statusCode || response.statusCode || 0;\n\n// GHL may return appointments under various keys\nconst events = response.events || response.appointments || response.data || [];\n\nconst debugInfo = {\n  statusCode,\n  responseKeys: Object.keys(response).join(', '),\n  eventCount: Array.isArray(events) ? events.length : 'not-array',\n  sampleEvent: events.length > 0 ? Object.keys(events[0]).join(', ') : 'none'\n};\n\n// If GHL API returned an error, surface it\nif (statusCode >= 400) {\n  return [{ json: { hasAppointment: false, message: 'GHL appointments API error: HTTP ' + statusCode, debug: debugInfo, apiResponse: response } }];\n}\n\nif (!events || !events.length) {\n  return [{ json: { hasAppointment: false, message: 'No appointments found for contact', debug: debugInfo } }];\n}\n\n// Filter to future appointments only, then sort ascending\nconst now = new Date();\nconst future = events.filter(e => {\n  const start = new Date(e.startTime || e.start_time || e.selectedTimeslot || '');\n  return start > now;\n});\n\nif (!future.length) {\n  return [{ json: { hasAppointment: false, message: 'No future appointments found (' + events.length + ' total, all in past)', debug: debugInfo } }];\n}\n\nconst sorted = future.sort((a, b) => new Date(a.startTime || a.start_time) - new Date(b.startTime || b.start_time));\nconst next = sorted[0];\n\nreturn [{\n  json: {\n    hasAppointment: true,\n    eventId: next.id,\n    calendarId: next.calendarId || next.calendar_id,\n    title: next.title || next.name || '',\n    startTime: next.startTime || next.start_time,\n    status: next.status || next.appointmentStatus || '',\n    debug: debugInfo\n  }\n}];"
       },
       "id": "extract-appointment",
       "name": "Extract Appointment",
