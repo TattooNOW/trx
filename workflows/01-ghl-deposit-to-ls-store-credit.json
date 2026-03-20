@@ -265,12 +265,12 @@
     {
       "parameters": {
         "method": "PUT",
-        "url": "=https://services.leadconnectorhq.com/calendars/events/{{ $('Extract Appointment').item.json.eventId }}",
+        "url": "=https://services.leadconnectorhq.com/calendars/events/appointments/{{ $('Extract Appointment').item.json.eventId }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"status\": \"confirmed\",\n  \"calendarId\": \"{{ $('Extract Appointment').item.json.calendarId }}\",\n  \"startTime\": \"{{ $('Extract Appointment').item.json.startTime }}\"\n}",
+        "jsonBody": "={\n  \"appointmentStatus\": \"confirmed\"\n}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
