@@ -1,0 +1,169 @@
+{
+  "name": "WF-Release Form Lookup",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "trx-release-form",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "trx-release-form"
+    },
+    {
+      "parameters": {
+        "jsCode": "const contactId = $input.first().json.query?.contactId || $input.first().json.query?.contact_id || '';\nif (!contactId) {\n  throw new Error('Missing contactId query parameter');\n}\nreturn [{ json: { contactId } }];"
+      },
+      "id": "extract-contact-id",
+      "name": "Extract Contact ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.contactId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Version", "value": "2021-07-28" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-ghl-contact",
+      "name": "Fetch GHL Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://services.leadconnectorhq.com/locations/n3G3ccCrPjsSH9bGlfIQ/customFields",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Version", "value": "2021-07-28" }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "fetch-custom-fields-schema",
+      "name": "Fetch Custom Fields Schema",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 250],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "merge-data",
+      "name": "Merge Contact + Schema",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [660, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build HTML release form page\nconst merged = $input.first().json;\n\n// Contact data comes from Fetch GHL Contact (first input)\nconst contact = merged.contact || merged;\n\n// Custom fields schema comes from Fetch Custom Fields Schema (second input)\n// It may have failed (401) — handle gracefully\nconst allItems = $input.all();\nlet schemaFields = [];\nfor (const item of allItems) {\n  if (item.json.customFields && Array.isArray(item.json.customFields)) {\n    schemaFields = item.json.customFields;\n    break;\n  }\n}\n\n// Build field ID → name mapping from schema (if available)\nconst fieldNameMap = {};\nfor (const sf of schemaFields) {\n  fieldNameMap[sf.id] = sf.name;\n}\n\n// Get custom fields from contact\nconst customFields = contact.customFields || [];\n\n// Filter to RELEASE fields: if we have schema, filter by name starting with \"RELEASE\".\n// If no schema, show ALL custom fields (user can refine later).\nconst releaseFields = [];\nfor (const cf of customFields) {\n  const name = fieldNameMap[cf.id] || '';\n  const isRelease = name.toLowerCase().startsWith('release');\n  // Include if it's a RELEASE field, or if we have no schema (show all)\n  if (isRelease || schemaFields.length === 0) {\n    releaseFields.push({\n      id: cf.id,\n      name: name || `Field ${cf.id}`,\n      value: cf.value\n    });\n  }\n}\n\n// Helper: format a field value for display\nfunction formatValue(val) {\n  if (val === null || val === undefined) return '<em>Not provided</em>';\n  if (typeof val === 'string') return escapeHtml(val) || '<em>Not provided</em>';\n  if (typeof val === 'object') {\n    // Signature field\n    if (val.url && val.meta && val.meta.isSignature) {\n      return `<img src=\"${escapeHtml(val.url)}\" alt=\"Signature\" style=\"max-width:300px;border:1px solid #ccc;padding:4px;background:#fff;\">`;\n    }\n    // File upload\n    if (val.url) {\n      return `<a href=\"${escapeHtml(val.url)}\" target=\"_blank\">View Attachment</a>`;\n    }\n    // Object with nested file entries (multiple uploads)\n    const keys = Object.keys(val);\n    if (keys.length === 0) return '<em>Not provided</em>';\n    const links = [];\n    for (const k of keys) {\n      if (val[k] && val[k].url) {\n        const fname = val[k].meta?.originalname || 'Attachment';\n        links.push(`<a href=\"${escapeHtml(val[k].url)}\" target=\"_blank\">${escapeHtml(fname)}</a>`);\n      }\n    }\n    return links.length > 0 ? links.join('<br>') : '<em>Not provided</em>';\n  }\n  return String(val);\n}\n\nfunction escapeHtml(str) {\n  if (!str) return '';\n  return String(str)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;');\n}\n\n// Standard contact fields\nconst firstName = contact.firstName || '';\nconst lastName = contact.lastName || '';\nconst fullName = `${firstName} ${lastName}`.trim() || 'Unknown';\nconst email = contact.email || '';\nconst phone = contact.phone || '';\nconst dob = contact.dateOfBirth || '';\nconst address = [contact.address1, contact.city, contact.state, contact.postalCode].filter(Boolean).join(', ');\n\n// Build release fields HTML rows\nlet releaseFieldsHtml = '';\nfor (const rf of releaseFields) {\n  const displayName = rf.name.replace(/^RELEASE\\s*[-–—]\\s*/i, '').trim() || rf.name;\n  releaseFieldsHtml += `\n    <tr>\n      <td style=\"padding:8px 12px;font-weight:600;border-bottom:1px solid #e5e7eb;white-space:nowrap;vertical-align:top;\">${escapeHtml(displayName)}</td>\n      <td style=\"padding:8px 12px;border-bottom:1px solid #e5e7eb;\">${formatValue(rf.value)}</td>\n    </tr>`;\n}\n\nif (!releaseFieldsHtml) {\n  releaseFieldsHtml = '<tr><td colspan=\"2\" style=\"padding:12px;color:#6b7280;\">No release form data found for this contact.</td></tr>';\n}\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>TRX Release Form — ${escapeHtml(fullName)}</title>\n  <style>\n    * { margin: 0; padding: 0; box-sizing: border-box; }\n    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f9fafb; color: #111827; padding: 24px; }\n    .container { max-width: 800px; margin: 0 auto; }\n    .header { background: #111827; color: #fff; padding: 20px 24px; border-radius: 8px 8px 0 0; }\n    .header h1 { font-size: 22px; font-weight: 700; }\n    .header p { font-size: 13px; color: #9ca3af; margin-top: 4px; }\n    .card { background: #fff; border: 1px solid #e5e7eb; border-top: none; padding: 24px; margin-bottom: 24px; }\n    .card:last-of-type { border-radius: 0 0 8px 8px; }\n    .section-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 12px; }\n    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }\n    .info-item label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; }\n    .info-item span { font-size: 15px; color: #111827; }\n    table { width: 100%; border-collapse: collapse; }\n    table th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; border-bottom: 2px solid #e5e7eb; }\n    @media print {\n      body { padding: 0; background: #fff; }\n      .header { background: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n    }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>TRX Tattoos &amp; Piercing — Release Form</h1>\n      <p>Client Information &amp; Acknowledgements</p>\n    </div>\n    <div class=\"card\">\n      <div class=\"section-title\">Client Information</div>\n      <div class=\"info-grid\">\n        <div class=\"info-item\"><label>Full Name</label><span>${escapeHtml(fullName)}</span></div>\n        <div class=\"info-item\"><label>Email</label><span>${escapeHtml(email)}</span></div>\n        <div class=\"info-item\"><label>Phone</label><span>${escapeHtml(phone)}</span></div>\n        <div class=\"info-item\"><label>Date of Birth</label><span>${escapeHtml(dob) || '<em>Not provided</em>'}</span></div>\n        <div class=\"info-item\" style=\"grid-column:span 2;\"><label>Address</label><span>${escapeHtml(address) || '<em>Not provided</em>'}</span></div>\n      </div>\n    </div>\n    <div class=\"card\">\n      <div class=\"section-title\">Release Form Responses</div>\n      <table>\n        <thead><tr><th>Field</th><th>Response</th></tr></thead>\n        <tbody>${releaseFieldsHtml}</tbody>\n      </table>\n    </div>\n  </div>\n</body>\n</html>`;\n\nreturn [{ json: { html } }];"
+      },
+      "id": "build-html",
+      "name": "Build HTML Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 120]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "text/html; charset=utf-8" }
+            ]
+          }
+        }
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1100, 120]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [{ "node": "Extract Contact ID", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Contact ID": {
+      "main": [
+        [
+          { "node": "Fetch GHL Contact", "type": "main", "index": 0 },
+          { "node": "Fetch Custom Fields Schema", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch GHL Contact": {
+      "main": [
+        [{ "node": "Merge Contact + Schema", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Custom Fields Schema": {
+      "main": [
+        [{ "node": "Merge Contact + Schema", "type": "main", "index": 1 }]
+      ]
+    },
+    "Merge Contact + Schema": {
+      "main": [
+        [{ "node": "Build HTML Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build HTML Response": {
+      "main": [
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "id": "k2B6iG1Tdu1xzdHk", "name": "TRX" }
+  ]
+}
