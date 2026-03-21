@@ -1,0 +1,32 @@
+<!--
+  GHL Custom Code Element — Release Form Embed
+  Place this in the GHL page builder as a Custom Code element.
+
+  How it works:
+  - When the page is visited with ?contactId=xxx, the iframe loads the
+    n8n webhook which renders the completed release form data.
+  - When there is NO contactId, the iframe stays hidden and the GHL
+    form below it is shown for the client to fill out.
+
+  IMPORTANT: src must be "about:blank", NOT "" (empty string).
+  An empty src="" causes the browser to load the current page inside
+  the iframe, creating an infinite loop that blanks the page.
+-->
+<div id="release-form-container">
+  <iframe
+    id="release-form"
+    style="width:100%;min-height:800px;border:none;display:none;"
+    src="about:blank">
+  </iframe>
+</div>
+<script>
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    var contactId = params.get('contact_id') || params.get('contactId');
+    if (contactId) {
+      var iframe = document.getElementById('release-form');
+      iframe.src = 'https://tn.reinventingai.com/webhook/trx-release-form?contactId=' + encodeURIComponent(contactId);
+      iframe.style.display = 'block';
+    }
+  })();
+</script>
