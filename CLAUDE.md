@@ -56,14 +56,21 @@ Build a set of n8n automation workflows that create a bidirectional data bridge 
 | `Piercer` | `[client] piercing` |
 | `Tooth Gem` | `[client] piercing` |
 
+### Cancel/No-Show Deposit Policy
+
+- **No-show:** Deposit forfeited (store credit reversed in Lightspeed)
+- **Late cancel (<48hrs notice):** Deposit forfeited (store credit reversed in Lightspeed)
+- **Regular cancel (≥48hrs notice):** Deposit NOT reversed — client keeps store credit to use when rescheduling. GHL note added: "deposit retained for rescheduling"
+
 ### Cancel/No-Show Tags (derived from GHL calendar name)
 
-| Scenario | Tag |
-|----------|-----|
-| Tattoo no-show | `[client] tattoo: no-show` |
-| Tattoo late cancel (<48hrs) | `[client] tattoo: late-cancel` |
-| Piercing no-show | `[client] piercing: no-show` |
-| Piercing late cancel (<48hrs) | `[client] piercing: late-cancel` |
+| Scenario | Tag | Deposit Action |
+|----------|-----|----------------|
+| Tattoo no-show | `[client] tattoo: no-show` | Forfeited |
+| Tattoo late cancel (<48hrs) | `[client] tattoo: late-cancel` | Forfeited |
+| Piercing no-show | `[client] piercing: no-show` | Forfeited |
+| Piercing late cancel (<48hrs) | `[client] piercing: late-cancel` | Forfeited |
+| Any cancel (≥48hrs) | _(no tag)_ | Retained for rescheduling |
 
 ### System Tags (set automatically by workflows)
 

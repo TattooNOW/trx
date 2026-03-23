@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Extract and validate appointment cancellation/no-show data\nconst body = $json.body || $json;\n\nconst contactId = body.contact_id || body.contactId;\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst appointmentDate = body.startTime || body.appointment_date || body.selectedTimeslot;\nconst cancellationTimestamp = body.dateUpdated || body.updatedAt || new Date().toISOString();\nconst status = (body.status || body.appointmentStatus || '').toLowerCase();\nconst depositAmount = parseFloat(body.deposit_amount || body.customFields?.deposit_amount || 0);\nconst artistName = body.calendarName || body.artist_name || '';\nconst appointmentType = body.title || body.appointment_type || 'Appointment';\nconst calendarName = (body.calendarName || body.calendar_name || '').toLowerCase();\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in appointment webhook');\n}\n\nif (status !== 'cancelled' && status !== 'no_show' && status !== 'no-show' && status !== 'noshow') {\n  // Not a cancellation or no-show — skip\n  return [];\n}\n\n// Determine service type from calendar name\nconst serviceType = calendarName.includes('piercing') ? 'piercing' : 'tattoo';\n\n// Calculate hours between cancellation and appointment\nconst appointmentTime = new Date(appointmentDate).getTime();\nconst cancelTime = new Date(cancellationTimestamp).getTime();\nconst hoursDiff = (appointmentTime - cancelTime) / (1000 * 60 * 60);\nconst isNoShow = status === 'no_show' || status === 'no-show' || status === 'noshow';\nconst isLateCancel = !isNoShow && hoursDiff < 48;\nconst isFullRefund = !isNoShow && hoursDiff >= 48;\n\n// Build tag: [client] tattoo: no-show OR [client] piercing: late-cancel etc.\nconst tagAction = isNoShow ? 'no-show' : 'late-cancel';\nconst tag = `[client] ${serviceType}: ${tagAction}`;\n\nreturn [{\n  json: {\n    contactId,\n    contactEmail,\n    appointmentDate,\n    cancellationTimestamp,\n    status,\n    depositAmount,\n    artistName,\n    appointmentType,\n    serviceType,\n    hoursDiff: Math.round(hoursDiff * 10) / 10,\n    isNoShow,\n    isLateCancel,\n    isFullRefund,\n    path: isFullRefund ? 'refund' : 'forfeit',\n    tag\n  }\n}];"
+        "jsCode": "// Extract and validate appointment cancellation/no-show data\nconst body = $json.body || $json;\n\nconst contactId = body.contact_id || body.contactId;\nconst contactEmail = body.contact_email || body.email || (body.contact && body.contact.email);\nconst appointmentDate = body.startTime || body.appointment_date || body.selectedTimeslot;\nconst cancellationTimestamp = body.dateUpdated || body.updatedAt || new Date().toISOString();\nconst status = (body.status || body.appointmentStatus || '').toLowerCase();\nconst depositAmount = parseFloat(body.deposit_amount || body.customFields?.deposit_amount || 0);\nconst artistName = body.calendarName || body.artist_name || '';\nconst appointmentType = body.title || body.appointment_type || 'Appointment';\nconst calendarName = (body.calendarName || body.calendar_name || '').toLowerCase();\n\nif (!contactEmail) {\n  throw new Error('Missing contact email in appointment webhook');\n}\n\nif (status !== 'cancelled' && status !== 'no_show' && status !== 'no-show' && status !== 'noshow') {\n  // Not a cancellation or no-show — skip\n  return [];\n}\n\n// Determine service type from calendar name\nconst serviceType = calendarName.includes('piercing') ? 'piercing' : 'tattoo';\n\n// Calculate hours between cancellation and appointment\nconst appointmentTime = new Date(appointmentDate).getTime();\nconst cancelTime = new Date(cancellationTimestamp).getTime();\nconst hoursDiff = (appointmentTime - cancelTime) / (1000 * 60 * 60);\nconst isNoShow = status === 'no_show' || status === 'no-show' || status === 'noshow';\nconst isLateCancel = !isNoShow && hoursDiff < 48;\nconst isRetainForReschedule = !isNoShow && hoursDiff >= 48;\n\n// Build tag: [client] tattoo: no-show OR [client] piercing: late-cancel etc.\n// No tag for retain-for-reschedule (>=48hrs cancel)\nconst tagAction = isNoShow ? 'no-show' : 'late-cancel';\nconst tag = isRetainForReschedule ? '' : `[client] ${serviceType}: ${tagAction}`;\n\nreturn [{\n  json: {\n    contactId,\n    contactEmail,\n    appointmentDate,\n    cancellationTimestamp,\n    status,\n    depositAmount,\n    artistName,\n    appointmentType,\n    serviceType,\n    hoursDiff: Math.round(hoursDiff * 10) / 10,\n    isNoShow,\n    isLateCancel,\n    isRetainForReschedule,\n    path: isRetainForReschedule ? 'retain' : 'forfeit',\n    tag\n  }\n}];"
       },
       "id": "validate-extract",
       "name": "Validate & Extract",
@@ -154,9 +154,9 @@
           },
           "conditions": [
             {
-              "id": "is-refund",
+              "id": "is-retain",
               "leftValue": "={{ $json.path }}",
-              "rightValue": "refund",
+              "rightValue": "retain",
               "operator": {
                 "type": "string",
                 "operation": "equals"
@@ -168,7 +168,7 @@
         "options": {}
       },
       "id": "refund-or-forfeit",
-      "name": "Refund or Forfeit?",
+      "name": "Retain or Forfeit?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
@@ -178,51 +178,60 @@
     },
     {
       "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "vQc7pV2wjDImrvks",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "get-ghl-contact-retain",
+      "name": "Get GHL Contact (Retain)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        1540,
+        -180
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "=https://trxtattoospiercings.retail.lightspeed.app/api/2.0/store_credits/{{ $json.customerId }}/transactions",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.ghl_contact_id }}/notes",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"store_credit_customer_id\": \"{{ $json.customerId }}\",\n  \"amount\": {{ $json.creditAmount * -1 }},\n  \"type\": \"REDEMPTION\",\n  \"notes\": \"Refund - cancelled {{ $json.hoursDiff }}hrs before appointment ({{ $json.appointmentType || 'Appointment' }})\",\n  \"user_id\": \"0ac54c19-8c55-11ed-f913-3dd92e9d5935\",\n  \"client_id\": \"refund-{{ $json.contactEmail }}-{{ ($json.appointmentDate || '').split('T')[0] }}\"\n}",
-        "options": {}
+        "jsonBody": "={\n  \"body\": \"Appointment cancelled {{ $('Validate & Extract').first().json.hoursDiff }}hrs before (≥48hrs notice) — deposit retained for rescheduling. {{ $('Validate & Extract').first().json.appointmentType }} on {{ $('Validate & Extract').first().json.appointmentDate }}\"\n}",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        }
       },
-      "id": "reverse-refund",
-      "name": "Reverse Credit (Refund)",
+      "id": "add-retain-note",
+      "name": "Add Retain Note",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1540,
+        1760,
         -180
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "rwkPiSgkd7mzdn83",
-          "name": "Lightspeed TRX"
+          "id": "AcpfpX2vSAGlSAfK",
+          "name": "GHL TRX"
         }
       },
       "continueOnFail": true,
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000
-    },
-    {
-      "parameters": {
-        "fromEmail": "gabe@tattoonow.com",
-        "toEmail": "gabe@tattoonow.com",
-        "subject": "=TRX: Process Stripe Refund — {{ $('Validate & Extract').first().json.contactEmail }}",
-        "emailType": "text",
-        "message": "=A deposit has been refunded in Lightspeed (cancelled {{ $('Validate & Extract').first().json.hoursDiff }}hrs before appointment).\n\nClient: {{ $('Validate & Extract').first().json.contactEmail }}\nAmount: ${{ $('Validate & Extract').first().json.creditAmount }}\nAppointment: {{ $('Validate & Extract').first().json.appointmentType }} on {{ $('Validate & Extract').first().json.appointmentDate }}\n\nACTION REQUIRED: Process the corresponding Stripe refund manually in GHL."
-      },
-      "id": "notify-stripe-refund",
-      "name": "Notify Ops: Process Stripe Refund",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [
-        1760,
-        -180
-      ],
-      "continueOnFail": true
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
@@ -456,18 +465,18 @@
       "main": [
         [
           {
-            "node": "Refund or Forfeit?",
+            "node": "Retain or Forfeit?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Refund or Forfeit?": {
+    "Retain or Forfeit?": {
       "main": [
         [
           {
-            "node": "Reverse Credit (Refund)",
+            "node": "Get GHL Contact (Retain)",
             "type": "main",
             "index": 0
           }
@@ -481,11 +490,11 @@
         ]
       ]
     },
-    "Reverse Credit (Refund)": {
+    "Get GHL Contact (Retain)": {
       "main": [
         [
           {
-            "node": "Notify Ops: Process Stripe Refund",
+            "node": "Add Retain Note",
             "type": "main",
             "index": 0
           }
