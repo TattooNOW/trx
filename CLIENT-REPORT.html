@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRX Tattoos &amp; Piercing — Automation Guide</title>
+  <style>
+    :root {
+      --blue: #116dff;
+      --blue-light: #e8f1ff;
+      --blue-dark: #0b4fbd;
+      --black: #080808;
+      --gray-dark: #333;
+      --gray-mid: #666;
+      --gray-light: #f5f5f7;
+      --gray-border: #e3e3e3;
+      --white: #ffffff;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: var(--gray-dark);
+      background: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    .header {
+      background: var(--black);
+      color: var(--white);
+      padding: 40px 24px;
+      text-align: center;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .header .subtitle {
+      font-size: 15px;
+      color: #aaa;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+    }
+
+    /* Container */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Section */
+    .section {
+      padding: 40px 0;
+      border-bottom: 1px solid var(--gray-border);
+    }
+    .section:last-child { border-bottom: none; }
+    .section h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--black);
+      margin-bottom: 20px;
+    }
+    .section h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--black);
+      margin-bottom: 10px;
+    }
+    .section p {
+      margin-bottom: 14px;
+      color: var(--gray-dark);
+    }
+
+    /* Summary cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+    @media (max-width: 600px) {
+      .summary-grid { grid-template-columns: 1fr; }
+    }
+    .summary-card {
+      background: var(--gray-light);
+      border-radius: 10px;
+      padding: 20px;
+      border-left: 4px solid var(--blue);
+    }
+    .summary-card .card-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .summary-card .card-body {
+      font-size: 14px;
+      color: var(--gray-dark);
+    }
+
+    /* Scenario cards */
+    .scenario {
+      background: var(--white);
+      border: 1px solid var(--gray-border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .scenario .scenario-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--black);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .scenario .scenario-title .badge {
+      display: inline-block;
+      background: var(--blue);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .scenario ol {
+      padding-left: 20px;
+      margin-bottom: 12px;
+    }
+    .scenario ol li {
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: var(--gray-dark);
+    }
+    .scenario .auto-note {
+      background: var(--blue-light);
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--blue-dark);
+      margin-top: 10px;
+    }
+    .scenario .auto-note strong { color: var(--blue); }
+
+    /* Alert box */
+    .alert {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    .alert-warning {
+      background: #fef9c3;
+      border: 1px solid #fde047;
+      color: #854d0e;
+    }
+    .alert-info {
+      background: var(--blue-light);
+      border: 1px solid #93c5fd;
+      color: var(--blue-dark);
+    }
+
+    /* Key reminders */
+    .reminders {
+      background: var(--black);
+      color: var(--white);
+      border-radius: 10px;
+      padding: 24px;
+      margin-top: 20px;
+    }
+    .reminders h3 {
+      color: var(--white);
+      font-size: 16px;
+      margin-bottom: 14px;
+    }
+    .reminders ul {
+      list-style: none;
+      padding: 0;
+    }
+    .reminders ul li {
+      font-size: 14px;
+      padding: 6px 0;
+      border-bottom: 1px solid #333;
+    }
+    .reminders ul li:last-child { border-bottom: none; }
+    .reminders ul li::before {
+      content: "→ ";
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    /* Status list */
+    .status-list {
+      list-style: none;
+      padding: 0;
+    }
+    .status-list li {
+      font-size: 14px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--gray-border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .status-list li:last-child { border-bottom: none; }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .dot-green { background: var(--green); }
+    .dot-yellow { background: var(--yellow); }
+
+    /* Tag table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    th {
+      text-align: left;
+      background: var(--gray-light);
+      padding: 10px 14px;
+      font-weight: 600;
+      color: var(--black);
+      border-bottom: 2px solid var(--gray-border);
+    }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--gray-border);
+      color: var(--gray-dark);
+    }
+    code {
+      background: var(--gray-light);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--blue-dark);
+      font-family: "SF Mono", "Consolas", "Monaco", monospace;
+    }
+
+    /* Collapsible technical section */
+    details {
+      margin-top: 10px;
+    }
+    details summary {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--blue);
+      cursor: pointer;
+      padding: 10px 0;
+    }
+    details summary:hover {
+      color: var(--blue-dark);
+    }
+    details .tech-content {
+      padding: 16px 0;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 30px 24px;
+      font-size: 12px;
+      color: #999;
+      border-top: 1px solid var(--gray-border);
+    }
+
+    /* Print */
+    @media print {
+      .header { background: #fff; color: #000; }
+      .header .subtitle { color: #666; }
+      .scenario, .summary-card { break-inside: avoid; }
+      .reminders { background: #f5f5f5; color: #000; }
+      .reminders h3 { color: #000; }
+      .reminders ul li { border-bottom-color: #ccc; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <h1>TRX TATTOOS &amp; PIERCING</h1>
+    <div class="subtitle">Automation System Guide</div>
+  </div>
+
+  <div class="container">
+
+    <!-- SECTION 1: SUMMARY -->
+    <div class="section">
+      <h2>What This System Does</h2>
+      <p>Your Lightspeed register and GoHighLevel CRM now talk to each other automatically. No more double-entry, no more forgetting to update a client profile, no more manually tracking deposits.</p>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="card-title">Deposits</div>
+          <div class="card-body">Client pays deposit online &rarr; store credit appears at the register automatically, appointment confirmed.</div>
+        </div>
+        <div class="summary-card">
+          <div class="card-title">Sales Sync</div>
+          <div class="card-body">Every sale at the register updates the client's GHL profile: tags, artist, dollar amounts, and a sale note.</div>
+        </div>
+        <div class="summary-card">
+          <div class="card-title">No-Shows &amp; Cancellations</div>
+          <div class="card-body">Mark a no-show or late cancel in GHL and the store credit is reversed automatically. Client is tagged.</div>
+        </div>
+        <div class="summary-card">
+          <div class="card-title">Nightly Sweep</div>
+          <div class="card-body">Every night at 11:30 PM, a reconciliation catches anything that was missed during the day.</div>
+        </div>
+      </div>
+
+      <div class="alert alert-info" style="margin-top: 20px;">
+        <strong>Removed from scope:</strong> Waiver archiving (GHL handles it natively) and low-stock SMS alerts (Lightspeed handles it natively) were originally planned but are no longer needed.
+      </div>
+    </div>
+
+    <!-- SECTION 2: MANAGER TRAINING -->
+    <div class="section">
+      <h2>Step-by-Step: Manager &amp; Artist Guide</h2>
+      <p>Here's what you need to know for each situation you'll encounter day to day.</p>
+
+      <!-- Scenario A -->
+      <div class="scenario">
+        <div class="scenario-title">
+          <span class="badge">BOOKING</span>
+          A new client wants to book a tattoo appointment
+        </div>
+        <ol>
+          <li>Open GHL Calendar and create the appointment for the client.</li>
+          <li><strong>Set the status to "Unconfirmed"</strong> &mdash; this is what triggers the deposit link to be sent.</li>
+          <li>The system automatically sends the client a $100 deposit payment link.</li>
+          <li>When the client pays, their appointment flips to "Confirmed" automatically.</li>
+          <li>At the register: their $100 store credit is already there &mdash; apply it at checkout.</li>
+        </ol>
+        <div class="alert alert-warning">
+          <strong>Important:</strong> The default calendar status is "Confirmed" which does NOT send the deposit link. You must manually set it to "Unconfirmed" to trigger the payment link.<br><br>
+          <strong>Note:</strong> Currently only $100 deposits are available. Additional tiers ($50, $100, $250) are coming soon.
+        </div>
+      </div>
+
+      <!-- Scenario B -->
+      <div class="scenario">
+        <div class="scenario-title">
+          <span class="badge">CHECKOUT</span>
+          A client arrives for their appointment
+        </div>
+        <ol>
+          <li>Check them in on the GHL calendar.</li>
+          <li>Do the tattoo or piercing.</li>
+          <li>Ring them up at the Lightspeed register.</li>
+          <li><strong>Make sure their email address is on the sale.</strong> This is how the two systems match customers.</li>
+          <li>Complete the sale as normal.</li>
+        </ol>
+        <div class="auto-note">
+          <strong>Automatic:</strong> The system updates their GHL profile with service tags (tattoo, piercing), artist name, sale amount, lifetime value, and a full sale note. If they've spent $500+ lifetime, they're tagged VIP.
+        </div>
+      </div>
+
+      <!-- Scenario C -->
+      <div class="scenario">
+        <div class="scenario-title">
+          <span class="badge">NO-SHOW</span>
+          A client doesn't show up
+        </div>
+        <ol>
+          <li>In GHL Calendar, mark the appointment as <strong>"No Show"</strong>.</li>
+          <li>That's it.</li>
+        </ol>
+        <div class="auto-note">
+          <strong>Automatic:</strong> The system reverses their store credit at the register, tags them as <code>[client] tattoo: no-show</code> (or piercing), and adds a note to their GHL profile.
+        </div>
+      </div>
+
+      <!-- Scenario D -->
+      <div class="scenario">
+        <div class="scenario-title">
+          <span class="badge">LATE CANCEL</span>
+          Client cancels less than 48 hours before
+        </div>
+        <ol>
+          <li>Cancel the appointment in GHL Calendar.</li>
+          <li>That's it.</li>
+        </ol>
+        <div class="auto-note">
+          <strong>Automatic:</strong> The store credit is forfeited (no refund). The client is tagged <code>[client] tattoo: late-cancel</code> and a note is added to their profile.
+        </div>
+      </div>
+
+      <!-- Scenario E -->
+      <div class="scenario">
+        <div class="scenario-title">
+          <span class="badge">EARLY CANCEL</span>
+          Client cancels 48+ hours before
+        </div>
+        <ol>
+          <li>Cancel the appointment in GHL Calendar.</li>
+          <li>The system automatically reverses the store credit.</li>
+          <li>You'll receive an email: <em>"Process Stripe refund for [client name]"</em></li>
+          <li>Go into Stripe and issue the refund manually.</li>
+        </ol>
+      </div>
+
+      <!-- Scenario F -->
+      <div class="scenario">
+        <div class="scenario-title">
+          <span class="badge">FORMS</span>
+          Looking up a client's release form
+        </div>
+        <ol>
+          <li>Open the client's contact in GHL.</li>
+          <li>Navigate to the Release Form page (link in GHL navigation).</li>
+          <li>The form loads automatically showing their signed waiver, contact info, and any uploaded files.</li>
+        </ol>
+      </div>
+
+      <!-- Automatic things -->
+      <div class="scenario" style="border-left: 4px solid var(--blue); border-color: var(--blue);">
+        <div class="scenario-title">
+          <span class="badge" style="background: var(--green);">AUTO</span>
+          Things that happen automatically (no action needed)
+        </div>
+        <ul style="padding-left: 20px; font-size: 14px; color: var(--gray-dark);">
+          <li style="margin-bottom: 8px;">Every night at 11:30 PM, a reconciliation sweep catches any sales that didn't sync during the day.</li>
+          <li style="margin-bottom: 8px;">Client profiles in GHL are tagged automatically with: service type, artist name, VIP status ($500+ lifetime), piercing location, and jewelry style.</li>
+          <li style="margin-bottom: 8px;">If any workflow fails, an error email is sent to the ops team with full details.</li>
+        </ul>
+      </div>
+
+      <!-- Key reminders -->
+      <div class="reminders">
+        <h3>Key Things to Remember</h3>
+        <ul>
+          <li>Always enter the client's <strong>email address</strong> at checkout &mdash; no email means no sync</li>
+          <li>When booking manually, set status to <strong>"Unconfirmed"</strong> to trigger the deposit link</li>
+          <li>Don't manually edit GHL tags that start with <code style="background:#222;color:#7eb8ff;">[client]</code> or <code style="background:#222;color:#7eb8ff;">[system]</code> &mdash; the automation manages those</li>
+          <li>If something seems wrong, check the client's email first &mdash; mismatched emails are the #1 cause of sync issues</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- SECTION 2B: STATUS -->
+    <div class="section">
+      <h2>Current Status &amp; Pending Items</h2>
+
+      <ul class="status-list">
+        <li><span class="status-dot dot-green"></span> <strong>Contacts loaded</strong> &mdash; existing customers are in GHL</li>
+        <li><span class="status-dot dot-green"></span> <strong>Deposit workflow</strong> &mdash; active ($100 link)</li>
+        <li><span class="status-dot dot-green"></span> <strong>Sales sync</strong> &mdash; active</li>
+        <li><span class="status-dot dot-green"></span> <strong>No-show / cancel reversal</strong> &mdash; active</li>
+        <li><span class="status-dot dot-green"></span> <strong>Nightly reconciliation</strong> &mdash; active</li>
+        <li><span class="status-dot dot-yellow"></span> <strong>SMS features</strong> &mdash; waiting on A2P registration</li>
+        <li><span class="status-dot dot-yellow"></span> <strong>Email newsletters</strong> &mdash; under review</li>
+        <li><span class="status-dot dot-yellow"></span> <strong>Deposit tiers</strong> &mdash; $50 / $100 / $250 options coming; trigger method TBD</li>
+        <li><span class="status-dot dot-yellow"></span> <strong>Sale attribution (WF4)</strong> &mdash; needs artist-to-employee mapping configured</li>
+        <li><span class="status-dot dot-yellow"></span> <strong>Release form page</strong> &mdash; needs finishing in GHL</li>
+      </ul>
+    </div>
+
+    <!-- SECTION 3: TAG REFERENCE -->
+    <div class="section">
+      <h2>Tag Reference</h2>
+      <p>These tags are applied automatically to client profiles in GHL. Use them for filtering, automations, and segments.</p>
+
+      <h3>Service Tags</h3>
+      <table>
+        <thead>
+          <tr><th>What Happened</th><th>Tag Applied</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Got a tattoo or microblading</td><td><code>[client] tattoo</code></td></tr>
+          <tr><td>Got a piercing or tooth gem</td><td><code>[client] piercing</code></td></tr>
+          <tr><td>Specific artist did the work</td><td><code>[client] tattoo: Artist Name</code></td></tr>
+          <tr><td>Specific piercer did the work</td><td><code>[client] piercing: Piercer Name</code></td></tr>
+          <tr><td>Piercing at specific location</td><td><code>[client] piercing: Nostril</code>, <code>Lobe</code>, etc.</td></tr>
+          <tr><td>Jewelry style preference</td><td><code>[client] jewelry: Style Name</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top: 24px;">No-Show &amp; Cancel Tags</h3>
+      <table>
+        <thead>
+          <tr><th>What Happened</th><th>Tag Applied</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Tattoo no-show</td><td><code>[client] tattoo: no-show</code></td></tr>
+          <tr><td>Tattoo late cancel (&lt;48 hrs)</td><td><code>[client] tattoo: late-cancel</code></td></tr>
+          <tr><td>Piercing no-show</td><td><code>[client] piercing: no-show</code></td></tr>
+          <tr><td>Piercing late cancel (&lt;48 hrs)</td><td><code>[client] piercing: late-cancel</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top: 24px;">System Tags</h3>
+      <table>
+        <thead>
+          <tr><th>Tag</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>[system] lightspeed-customer</code></td><td>Has made at least one purchase at the register</td></tr>
+          <tr><td><code>[system] vip</code></td><td>Lifetime spending is $500 or more</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECTION 4: TECHNICAL REFERENCE -->
+    <div class="section">
+      <h2>Technical Reference</h2>
+      <p>This section is for the implementation team and troubleshooting.</p>
+
+      <details>
+        <summary>Active Workflows</summary>
+        <div class="tech-content">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Workflow</th><th>Trigger</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>GHL Deposit &rarr; LS Store Credit</td><td>GHL payment webhook</td><td>Active</td></tr>
+              <tr><td>2</td><td>LS Sale &rarr; GHL Contact Update</td><td>LS sale.update webhook</td><td>Active</td></tr>
+              <tr><td>3</td><td>Cancel/No-Show &rarr; Reverse Credit</td><td>GHL appointment webhook</td><td>Active</td></tr>
+              <tr><td>4</td><td>Appointment &rarr; Sale Attribution</td><td>GHL appointment webhook</td><td>Pending config</td></tr>
+              <tr><td>5</td><td>Nightly Reconciliation</td><td>Cron 11:30 PM</td><td>Active</td></tr>
+              <tr><td>&mdash;</td><td>Historical Backfill</td><td>Manual webhook</td><td>One-time tool</td></tr>
+              <tr><td>&mdash;</td><td>Release Form Lookup</td><td>GET webhook</td><td>Active</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top: 10px; font-size: 13px; color: var(--gray-mid);">WF6 (Waiver Archive) and WF7 (Low Stock SMS) were removed from scope &mdash; handled natively by GHL and Lightspeed respectively.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Shared Utilities</summary>
+        <div class="tech-content">
+          <table>
+            <thead>
+              <tr><th>Utility</th><th>n8n ID</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Customer Matcher</td><td><code>vQc7pV2wjDImrvks</code></td><td>Find or create customer across both systems (email match)</td></tr>
+              <tr><td>Error Logger</td><td><code>NjQ4osMVHKK4l1Wa</code></td><td>Email alert on workflow failure</td></tr>
+              <tr><td>Tag Applier</td><td>&mdash;</td><td>Apply tags, custom fields, and notes to GHL contacts</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details>
+        <summary>Webhook Endpoints</summary>
+        <div class="tech-content">
+          <table>
+            <thead>
+              <tr><th>Workflow</th><th>Method</th><th>Path</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>WF1 &mdash; Deposit</td><td>POST</td><td><code>/webhook/ghl-deposit</code></td></tr>
+              <tr><td>WF2 &mdash; Sale Sync</td><td>POST</td><td><code>/webhook/ls-sale-complete</code></td></tr>
+              <tr><td>WF3 &mdash; Cancel/No-Show</td><td>POST</td><td><code>/webhook/ghl-appointment-cancel</code></td></tr>
+              <tr><td>WF4 &mdash; Attribution</td><td>POST</td><td><code>/webhook/ghl-appointment-complete</code></td></tr>
+              <tr><td>Release Form</td><td>GET</td><td><code>/webhook/trx-release-form?contactId=</code></td></tr>
+              <tr><td>Backfill</td><td>GET</td><td><code>/webhook/ls-backfill-test?offset=</code></td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top: 10px; font-size: 13px; color: var(--gray-mid);">All hosted on <code>tn.reinventingai.com</code></p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Credentials &amp; API Endpoints</summary>
+        <div class="tech-content">
+          <table>
+            <thead>
+              <tr><th>System</th><th>n8n Credential ID</th><th>Base URL</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lightspeed TRX</td><td><code>rwkPiSgkd7mzdn83</code></td><td><code>https://trxtattoospiercings.retail.lightspeed.app</code></td></tr>
+              <tr><td>GHL TRX</td><td><code>AcpfpX2vSAGlSAfK</code></td><td><code>https://services.leadconnectorhq.com</code></td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top: 10px; font-size: 13px; color: var(--gray-mid);">GHL Location ID: <code>n3G3ccCrPjsSH9bGlfIQ</code> &bull; n8n Tag: <code>TRX</code> (ID: <code>k2B6iG1Tdu1xzdHk</code>)</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>GHL Custom Fields</summary>
+        <div class="tech-content">
+          <table>
+            <thead>
+              <tr><th>Field</th><th>Type</th><th>Set By</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>last_lightspeed_sale_date</code></td><td>Date</td><td>WF2, WF5</td></tr>
+              <tr><td><code>last_lightspeed_sale_amount</code></td><td>Number</td><td>WF2, WF5</td></tr>
+              <tr><td><code>lifetime_value</code></td><td>Number</td><td>WF2, WF5</td></tr>
+              <tr><td><code>last_artist_id</code></td><td>Text</td><td>WF4</td></tr>
+              <tr><td><code>deposit_amount</code></td><td>Number</td><td>GHL booking form</td></tr>
+              <tr><td><code>jewelry_style_preference</code></td><td>Multi-select</td><td>Front of house</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details>
+        <summary>Cancel/No-Show Policy Logic</summary>
+        <div class="tech-content">
+          <table>
+            <thead>
+              <tr><th>Scenario</th><th>Timing</th><th>Store Credit</th><th>Refund?</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>No-show</td><td>&mdash;</td><td>Forfeited</td><td>No</td></tr>
+              <tr><td>Late cancel</td><td>&lt; 48 hours</td><td>Forfeited</td><td>No</td></tr>
+              <tr><td>Early cancel</td><td>&ge; 48 hours</td><td>Reversed</td><td>Yes (manual Stripe)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details>
+        <summary>Safety &amp; Reliability</summary>
+        <div class="tech-content">
+          <table>
+            <thead>
+              <tr><th>Feature</th><th>What It Prevents</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Idempotency keys</td><td>Duplicate store credits on webhook retry</td></tr>
+              <tr><td>Retry logic (3x)</td><td>Transient API failures</td></tr>
+              <tr><td>Email error alerts</td><td>Silent failures (alerts sent to ops)</td></tr>
+              <tr><td>Exact email matching</td><td>Accidental customer merges</td></tr>
+              <tr><td>Nightly reconciliation</td><td>Missed syncs during the day</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details>
+        <summary>Troubleshooting</summary>
+        <div class="tech-content">
+          <table>
+            <thead>
+              <tr><th>Problem</th><th>Check</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Store credit didn't appear</td><td>Verify deposit payment completed in GHL; check n8n execution log for WF1</td></tr>
+              <tr><td>Sale didn't sync to GHL</td><td>Was the client's email on the sale? Check n8n execution log for WF2</td></tr>
+              <tr><td>Client not tagged correctly</td><td>Check product category in Lightspeed matches expected names (Tattoo Artist, Piercing, etc.)</td></tr>
+              <tr><td>Credit not reversed after no-show</td><td>Was appointment marked "No Show" in GHL? Check n8n execution log for WF3</td></tr>
+              <tr><td>Workflows stopped running</td><td>Log into n8n at tn.reinventingai.com; check workflow is Active (toggle on)</td></tr>
+              <tr><td>Error email received</td><td>Read the email body for the specific error; check n8n execution log for the referenced workflow</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <p>TRX Tattoos &amp; Piercing &mdash; Automation System Guide</p>
+    <p>Built by TattooNOW / ReinventingAI &bull; Updated March 2026</p>
+  </div>
+
+</body>
+</html>
